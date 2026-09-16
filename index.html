@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>English Voice Challenge — Fast Continuous Voice</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef6ff;color:#203047;font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+.wrap{width:min(980px,97%);margin:auto;padding:12px 0 28px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.title{font-weight:900;font-size:1.18rem}.stats{display:flex;gap:7px;flex-wrap:wrap}
+.pill{background:#fff;border-radius:999px;padding:8px 11px;font-weight:800;box-shadow:0 4px 14px #00000012}
+.box{background:#fff;border-radius:21px;padding:9px;box-shadow:0 12px 32px #29425c1d}
+canvas{display:block;width:100%;height:auto;border-radius:15px;background:#d9f2ff}
+.msg{margin-top:9px;padding:10px 12px;border-radius:13px;background:#f3f6fa;font-weight:800;min-height:43px}
+.msg.good{background:#e4f8ea;color:#176f39}.msg.warn{background:#fff1d7;color:#765000}.msg.bad{background:#ffe7e5;color:#8c2f2a}
+.voicebar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px}
+.status{display:flex;align-items:center;gap:8px;background:#eef3f7;border-radius:999px;padding:8px 11px;font-weight:800}
+.dot{width:10px;height:10px;border-radius:50%;background:#999}.dot.on{background:#20a75b;box-shadow:0 0 0 5px #20a75b20}.dot.wait{background:#f0a020}
+button{border:0;border-radius:13px;padding:11px 12px;min-height:44px;font-weight:900;font-size:.9rem;cursor:pointer}
+.voice{background:#e53935;color:#fff}.voice.listening{background:#2563eb;color:#fff}.stop{background:#ffd9d7;color:#7d221d;display:none}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+.controls button{background:#e8edff;color:#29345b}.controls .action{background:#fff0b9;color:#5c4700}.controls .door{background:#dff7e5;color:#185d2e}
+.heard,.help,.results{margin-top:9px;padding:9px 11px;border-radius:13px;background:#f8fafc;color:#596678;font-size:.9rem;line-height:1.5}
+.heard{font-weight:800;color:#35445a}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.resultCard{background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:9px;color:#334155}
+@media(max-width:620px){.controls{grid-template-columns:repeat(2,1fr)}.results{grid-template-columns:1fr}}
+
+.modeOverlay{position:fixed;inset:0;background:#eef6ff;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.modeCard{width:min(520px,94vw);background:#fff;border-radius:24px;padding:30px;box-shadow:0 18px 55px #2030472b;text-align:center}
+.modeCard h1{margin:0 0 10px;font-size:1.7rem}.modeCard p{margin:0 0 22px;color:#596678;font-weight:700}
+.modeButtons{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modeButtons button{font-size:1.05rem;padding:16px}
+.onePlayer{background:#5268e8;color:#fff}.twoPlayers{background:#e35d4f;color:#fff}
+@media(max-width:520px){.modeButtons{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="scoreOverlay" class="modeOverlay" style="display:none">
+  <div class="modeCard" style="max-width:720px">
+    <h1>🏆 Scoreboard</h1>
+    <p id="scoreSummary" style="font-size:20px;margin-bottom:22px"></p>
+    <div id="scoreCards" class="modeButtons"></div>
+    <div style="margin-top:22px">
+      <button id="scorePlayAgain" class="onePlayer">🔄 Play Again</button>
+    </div>
+  </div>
+</div>
+
+<div id="modeOverlay" class="modeOverlay">
+ <div class="modeCard">
+  <h1>🏁 English Voice Challenge</h1>
+  <p>Choose the game mode before starting.</p>
+  <div class="modeButtons">
+   <button id="onePlayerBtn" class="onePlayer">👤 One Player</button>
+   <button id="twoPlayersBtn" class="twoPlayers">👥 Two Players</button>
+  </div>
+ </div>
+</div>
+<div class="wrap">
+ <div class="top">
+  <div class="title">🏁 English Voice Challenge — Fast Continuous Voice</div>
+  <div class="stats">
+   <div class="pill">Current: <span id="currentPlayer">Player 1</span></div>
+   <div class="pill">⏱ <span id="timer">0.0</span>s</div>
+   <div class="pill">🗣 <span id="commands">0</span></div>
+  </div>
+ </div>
+
+ <div class="box">
+  <canvas id="game" width="960" height="500"></canvas>
+  <div id="msg" class="msg">Voice control is fast and continuous.</div>
+
+  <div class="voicebar">
+   <div class="status"><span id="dot" class="dot"></span><span id="status">Voice starts automatically</span></div>
+   <div>
+    <button id="start" class="voice">🎤 Speak</button>
+     <button id="restartGame" style="background:#203047;color:#fff;margin-left:6px">🔄 Restart Game</button>
+   </div>
+  </div>
+
+  <div id="heard" class="heard">Heard: —</div>
+
+  <div class="controls">
+   <button data-c="left">⬅ Left</button>
+   <button data-c="right">Right ➡</button>
+   <button data-c="jump">⬆ Jump</button>
+   <button data-c="stop">🛑 Stop</button>
+   <button class="action" data-c="take">🔑 Take the key</button>
+   <button class="door" data-c="open">🚪 Open the door</button>
+  </div>
+
+  <div class="results">
+   <div class="resultCard"><b>🔵 Player 1</b><br>Time: <span id="p1time">—</span><br>Commands: <span id="p1cmd">—</span></div>
+   <div class="resultCard"><b>🔴 Player 2</b><br>Time: <span id="p2time">—</span><br>Commands: <span id="p2cmd">—</span></div>
+  </div>
+
+  <div class="help">
+    <b>Automatic Speak:</b> The Speak button is pressed <b>automatically</b>. While listening, it becomes <b>blue</b>.
+    The microphone keeps listening until it recognizes a command. As soon as a command is recognized, it executes <b>immediately</b>.
+    Each automatic listening turn executes at most <b>one command</b>, then the next listening turn starts automatically.
+    Commands are recognized inside longer sentences, for example: <b>“Please move right now.”</b>
+    <br><b>Commands:</b> “right”, “left”, “jump”, “stop”, “take the key”, “open the door”.
+   </div>
+ </div>
+</div>
+
+<script>
+const cv=document.getElementById("game"),ctx=cv.getContext("2d"),$=id=>document.getElementById(id);
+const W=960,H=500,STEP=70,SPEED=8,GRAV=.75,JUMP=13.5;
+const platforms=[{x:0,y:445,w:960,h:55},{x:260,y:355,w:125,h:18},{x:525,y:325,w:125,h:18}];
+const KEY={x:505,y:410};
+const door={x:875,y:330,w:58,h:115};
+const p={x:50,y:391,w:38,h:54,targetX:50,vx:0,vy:0,onGround:false,key:false};
+
+let current=1,keyTaken=false,runFinished=true;
+let playerMode=0;
+let gameStarted=false;
+let runStart=0,commandCount=0,timerId=null;
+let results={1:null,2:null};
+const COMMAND_GAP_MS=0; // earlier fast mode: no forced gap
+
+function message(t,type=""){$("msg").className="msg"+(type?" "+type:"");$("msg").innerHTML=t}
+function near(a,b,m=85){return Math.hypot(a.x+a.w/2-(b.x+(b.w||30)/2),a.y+a.h/2-(b.y+(b.h||30)/2))<m}
+function setCmdCount(){$("commands").textContent=commandCount}
+function setTimer(v){$("timer").textContent=v.toFixed(1)}
+
+function beginRun(n){
+ current=n;$("currentPlayer").textContent="Player "+n;
+ p.x=50;p.y=391;p.targetX=50;p.vx=0;p.vy=0;p.key=false;
+ keyTaken=false;runFinished=false;commandCount=0;setCmdCount();setTimer(0);
+ runStart=performance.now();clearInterval(timerId);
+ timerId=setInterval(()=>{if(!runFinished)setTimer((performance.now()-runStart)/1000)},100);
+ message((n===1?"🔵":"🔴")+" <b>Player "+n+"'s turn.</b> Reach the key, take it, then open the door.","good");
+}
+
+function step(dir){
+ const base=Math.abs(p.targetX-p.x)>2?p.targetX:p.x;
+ p.targetX=Math.max(0,Math.min(W-p.w,base+dir*STEP));
+ message(dir>0?"➡️ One step right.":"⬅️ One step left.","good");
+}
+function execute(c){
+ if(runFinished)return;
+ commandCount++;setCmdCount();
+
+ if(c==="right")step(1);
+ else if(c==="left")step(-1);
+ else if(c==="stop"){p.targetX=p.x;p.vx=0;message("🛑 Stopped.","good")}
+ else if(c==="jump"){
+  if(p.onGround){p.vy=-JUMP;p.onGround=false;message("⬆️ Jump!","good")}
+  else message("Wait until you land before jumping again.","warn");
+ }
+ else if(c==="take"){
+  const kb={x:KEY.x-15,y:KEY.y-35,w:50,h:50};
+  if(!keyTaken&&near(p,kb,90)){keyTaken=true;p.key=true;message("🔑 Great! You took the key.","good")}
+  else if(keyTaken)message("You already have the key.","warn");
+  else message("Move closer to the key first.","warn");
+ }
+ else if(c==="open"){
+  if(!near(p,door,115))message("Move closer to the door first.","warn");
+  else if(!p.key)message("The door is locked. Take the key first.","bad");
+  else{
+   message("🚪 Door opened!","good");
+   finishRun();
+  }
+ }
+}
+function finishRun(){
+ runFinished=true;clearInterval(timerId);
+ const elapsed=(performance.now()-startTime)/1000;
+ results[current]={time:elapsed,commands:commandCount};
+ $("p"+current+"time").textContent=elapsed.toFixed(2)+" s";
+ $("p"+current+"cmd").textContent=commandCount;
+
+ if(playerMode===1){
+   showScoreboardScreen();
+ }else if(current===1){
+   message("✅ Player 1 finished. Player 2 starts next!","good");
+   setTimeout(()=>beginRun(2),1500);
+ }else{
+   showScoreboardScreen();
+ }
+}
+function showWinner(){
+ const a=results[1],b=results[2];let w=0;
+ if(Math.abs(a.time-b.time)>0.15)w=a.time<b.time?1:2;
+ else if(a.commands!==b.commands)w=a.commands<b.commands?1:2;
+ message(w?"🏆 <b>Player "+w+" wins!</b> Tap the game to restart.":"🤝 Tie! Tap the game to restart.","good");
+}
+function physics(){
+ const dx=p.targetX-p.x;
+ if(Math.abs(dx)>1){p.vx=Math.sign(dx)*Math.min(SPEED,Math.abs(dx));p.x+=p.vx}else{p.x=p.targetX;p.vx=0}
+ const prev=p.y+p.h;p.vy+=GRAV;p.y+=p.vy;p.onGround=false;
+ for(const q of platforms){
+  const bottom=p.y+p.h;
+  if(p.x+p.w>q.x&&p.x<q.x+q.w&&p.vy>=0&&prev<=q.y+7&&bottom>=q.y){p.y=q.y-p.h;p.vy=0;p.onGround=true}
+ }
+ if(p.y>H+70){p.x=50;p.y=391;p.targetX=50;p.vx=0;p.vy=0}
+}
+function rr(x,y,w,h,r,col){ctx.fillStyle=col;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function drawKey(){
+ if(keyTaken)return;
+ ctx.strokeStyle="#d89d00";ctx.lineWidth=8;ctx.lineCap="round";
+ ctx.beginPath();ctx.arc(KEY.x,KEY.y-8,12,0,Math.PI*2);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(KEY.x+10,KEY.y);ctx.lineTo(KEY.x+32,KEY.y+20);ctx.stroke();
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.fillStyle="#d8f2ff";ctx.fillRect(0,0,W,H);
+ platforms.forEach(q=>rr(q.x,q.y,q.w,q.h,8,"#6fa25c"));drawKey();
+ rr(door.x,door.y,door.w,door.h,8,"#765138");ctx.fillStyle="#2b1b11";ctx.fillRect(door.x+8,door.y+8,door.w-16,door.h-8);
+ const col=current===1?"#5268e8":"#e35d4f";rr(p.x,p.y,p.w,p.h,9,col);
+ ctx.fillStyle="#ffd8b1";ctx.beginPath();ctx.arc(p.x+p.w/2,p.y+10,11,0,7);ctx.fill();
+ ctx.fillStyle="#26384f";ctx.font="bold 18px Arial";ctx.fillText('Say ONE command. Listening restarts automatically.',25,38);
+}
+function loop(){physics();draw();requestAnimationFrame(loop)}
+
+document.querySelectorAll("[data-c]").forEach(b=>b.addEventListener("click",()=>execute(b.dataset.c)));
+cv.addEventListener("click",()=>{
+ if(!runFinished)return;
+ if(playerMode===1 && results[1]){
+  results={1:null,2:null};
+  $("p1time").textContent="—";$("p1cmd").textContent="—";
+  beginRun(1);
+ }else if(playerMode===2 && results[1]&&results[2]){
+  results={1:null,2:null};
+  $("p1time").textContent=$("p2time").textContent="—";
+  $("p1cmd").textContent=$("p2cmd").textContent="—";
+  beginRun(1);
+ }
+});
+
+function normalize(s){
+ return s.toLowerCase()
+   .replace(/[^a-z0-9\s]/g," ")
+   .replace(/\s+/g," ")
+   .trim();
+}
+
+function detectCommand(text){
+ const t=normalize(text);
+ // Earlier fast mode: detect commands even inside a longer recognized phrase.
+ if(t.includes("take the key")||t.includes("take key")||t.includes("pick up the key")||t.includes("pick up key")) return "take";
+ if(t.includes("open the door")||t.includes("open door")||t.includes("opened the door")||t.includes("open the dore")) return "open";
+ if((t==="right")||t.includes(" right")||(t==="write")||t.includes(" write")) return "right";
+ if((t==="left")||t.includes(" left")) return "left";
+ if(t.includes("jump")) return "jump";
+ if(t.includes("stop")) return "stop";
+ return null;
+}
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let recognition=null;
+let recognitionRunning=false;
+let commandExecutedThisPress=false;
+let listenTimeout=null;
+let autoSpeak=true;
+let autoRestartTimer=null;
+
+async function requestMic(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:true});st.getTracks().forEach(t=>t.stop());return true;}
+ catch(e){message("Microphone permission is blocked. Allow it in Chrome.","bad");return false;}
+}
+
+function showVoiceState(on){
+ $("dot").className=on?"dot on":"dot";
+ $("status").textContent=on?"Listening for ONE command":"Next listening starts automatically";
+}
+
+if(SR){
+ recognition=new SR();
+ recognition.lang="en-US";
+ recognition.continuous=false;      // one listening session per button press
+ recognition.interimResults=true;  // act only on the final recognized phrase
+ recognition.maxAlternatives=1;
+
+ recognition.onstart=()=>{
+  recognitionRunning=true;
+  commandExecutedThisPress=false;
+  $("start").disabled=true;
+  $("start").classList.add("listening");
+  $("start").textContent="🎙️ Listening...";
+  showVoiceState(true);
+
+  clearTimeout(listenTimeout);
+ };
+
+ recognition.onresult=e=>{
+  // HARD LOCK: one button press can execute at most one command.
+  if(commandExecutedThisPress)return;
+
+  // Use the newest interim OR final transcript, so we do not wait
+  // for the browser to finalize speech at the end of the 4-second window.
+  const r=e.results[e.results.length-1];
+  if(!r || !r[0])return;
+
+  const text=r[0].transcript.trim();
+  if(!text)return;
+
+  $("heard").textContent='Heard: "'+text+'"';
+  const cmd=detectCommand(text);
+
+  if(cmd){
+   // Lock first, execute immediately, then stop listening.
+   commandExecutedThisPress=true;
+   execute(cmd);
+   clearTimeout(listenTimeout);
+   listenTimeout=null;
+   try{recognition.stop()}catch(err){}
+  }
+ };
+ recognition.onerror=e=>{
+  recognitionRunning=false;
+  if(e.error==="not-allowed"||e.error==="service-not-allowed"){
+   message("Speech recognition is not allowed. Allow microphone access in Chrome.","bad");
+  }else if(e.error!=="no-speech"){
+   message("Speech recognition error: "+e.error+". Tap Speak to try again.","warn");
+  }
+ };
+
+ recognition.onend=()=>{
+  recognitionRunning=false;
+  clearTimeout(listenTimeout);
+  listenTimeout=null;
+  $("start").disabled=false;
+  $("start").classList.remove("listening");
+  $("start").textContent="🎤 Speak";
+  showVoiceState(false);
+
+  // Automatically press Speak again for the next command.
+  if(autoSpeak && !runFinished){
+   clearTimeout(autoRestartTimer);
+   autoRestartTimer=setTimeout(()=>{
+    if(!recognitionRunning && autoSpeak){
+     $("start").click();
+    }
+   },120);
+  }
+ };
+}else{
+ $("start").disabled=true;
+ message("Speech recognition is not supported in this browser.","bad");
+}
+
+let micChecked=false;
+$("start").addEventListener("click",async()=>{
+ if(!recognition || recognitionRunning)return;
+ if(!micChecked){
+  if(!(await requestMic()))return;
+  micChecked=true;
+ }
+ commandExecutedThisPress=false;
+ try{recognition.start()}catch(e){
+  message("Could not start speech recognition. Tap Speak and try again.","warn");
+ }
+});
+
+function showScoreboardScreen(){
+ const cards=$("scoreCards");
+ const summary=$("scoreSummary");
+ cards.innerHTML="";
+
+ function scoreCard(n,d,isWinner){
+   return `<div class="resultCard" style="min-width:220px;${isWinner?"border:3px solid #f0bd35;background:#fff9e8;":""}">
+     <h2 style="margin-top:0">${isWinner?"👑 ":""}Player ${n}</h2>
+     <div style="font-size:28px;font-weight:800">⏱ ${d.time.toFixed(2)} s</div>
+     <div style="font-size:18px;margin-top:8px">🎙 ${d.commands} commands</div>
+   </div>`;
+ }
+
+ if(playerMode===1){
+   cards.innerHTML=scoreCard(1,results[1],true);
+   summary.textContent="🎉 Game completed!";
+ }else{
+   let winner=0;
+   const a=results[1], b=results[2];
+   const diff=Math.abs(a.time-b.time);
+   if(diff>0.05) winner=a.time<b.time?1:2;
+   else if(a.commands!==b.commands) winner=a.commands<b.commands?1:2;
+   cards.innerHTML=scoreCard(1,a,winner===1)+scoreCard(2,b,winner===2);
+   summary.textContent=winner?`🏆 Player ${winner} wins!`:"🤝 It's a tie!";
+ }
+ $("scoreOverlay").style.display="flex";
+}
+
+function playAgainFromScore(){
+ $("scoreOverlay").style.display="none";
+ results={1:null,2:null};
+ $("p1time").textContent=$("p2time").textContent="—";
+ $("p1cmd").textContent=$("p2cmd").textContent="—";
+ playerMode=0;gameStarted=false;runFinished=true;
+ $("modeOverlay").style.display="flex";
+ message("Choose One Player or Two Players to begin.","good");
+}
+$("scorePlayAgain").addEventListener("click",playAgainFromScore);
+
+function restartGame(){
+ $("scoreOverlay").style.display="none";
+ clearInterval(timerId);
+ results={1:null,2:null};
+ $("p1time").textContent=$("p2time").textContent="—";
+ $("p1cmd").textContent=$("p2cmd").textContent="—";
+ const cards=document.querySelectorAll(".resultCard");
+ if(cards[1])cards[1].style.display="block";
+ playerMode=0; gameStarted=false; current=1; runFinished=true;
+ p.x=50;p.y=391;p.targetX=50;p.vx=0;p.vy=0;p.key=false;
+ keyTaken=false;commandCount=0;setCmdCount();setTimer(0);
+ $("currentPlayer").textContent="Player 1";
+ $("modeOverlay").style.display="flex";
+ message("Choose One Player or Two Players to begin.","good");
+}
+
+$("restartGame").addEventListener("click",restartGame);
+
+function chooseMode(mode){
+ playerMode=mode; gameStarted=true;
+ results={1:null,2:null};
+ $("p1time").textContent=$("p2time").textContent="—";
+ $("p1cmd").textContent=$("p2cmd").textContent="—";
+ const cards=document.querySelectorAll(".resultCard");
+ if(cards[1])cards[1].style.display=mode===1?"none":"block";
+ $("modeOverlay").style.display="none";
+ beginRun(1);
+ setTimeout(()=>{$("start").click();},150);
+}
+$("onePlayerBtn").addEventListener("click",()=>chooseMode(1));
+$("twoPlayersBtn").addEventListener("click",()=>chooseMode(2));
+message("Choose One Player or Two Players to begin.","good");
+loop();
+
+
+</script>
+</body>
+</html>
