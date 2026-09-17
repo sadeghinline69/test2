@@ -709,12 +709,43 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 }
 
 </style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#6d5dfc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Memory Match">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
   <div class="big">🐾 English Memory Match</div>
-  <label><b>Number of Players</b><br>
+  <div id="playTypeBox" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px">
+   <button type="button" id="localPlayBtn" class="primary" style="background:#23a55a">📱 Local Game</button>
+   <button type="button" id="onlinePlayBtn" class="secondary">🌐 Online Game</button>
+  </div>
+  <div id="onlineLobby" style="display:none;border:2px solid #d9e2f3;border-radius:14px;padding:10px;margin:8px 0;background:#f8fbff">
+   <input id="onlineName" class="setupSelect" maxlength="20" placeholder="Your name" aria-label="Your online player name" style="box-sizing:border-box;margin-bottom:7px">
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+    <button type="button" id="createRoomBtn" class="primary">Create Room</button>
+    <button type="button" id="showJoinBtn" class="secondary">Join Room</button>
+   </div>
+   <div id="joinFields" style="display:none;margin-top:7px">
+    <input id="roomCodeInput" class="setupSelect" maxlength="12" placeholder="Room code" aria-label="Room code" style="box-sizing:border-box;text-transform:uppercase">
+    <button type="button" id="joinRoomBtn" class="primary" style="width:100%;margin-top:6px">Join</button>
+   </div>
+   <div id="onlineStatus" style="font-size:12px;font-weight:800;margin-top:7px;min-height:18px"></div>
+   <div id="roomReady" style="display:none;margin-top:7px">
+    <div style="font-weight:900">Room: <span id="roomCodeLabel"></span></div>
+    <div id="onlinePlayers" style="font-size:12px;margin:4px 0"></div>
+    <button type="button" id="onlineStartBtn" class="primary" style="width:100%">Start Online Game</button>
+   </div>
+  </div>
+  <label id="playerCountWrap"><b>Number of Players</b><br>
    <select id="playerCount" class="playerSelect" aria-label="Number of players">
     <option value="1" selected>1 Player</option>
     <option value="2">2 Players</option>
@@ -781,6 +812,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
   <div class="stats"><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
 <span id="currentPlayer" style="display:none">1</span>
+ <div id="onlineRoomBar" style="display:none;text-align:center;font-weight:900;font-size:12px;margin:4px"></div>
  <div id="players" class="players"></div>
  <div id="message">Say a card number to reveal a card.</div>
 <div id="liveStats" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0">
@@ -1367,8 +1399,9 @@ function chooseCard(n){
    speak("Not a match.");
   },1000);
   setTimeout(()=>{
-   hide(first);hide(second);first=second=null;locked=false;voiceOn();
-   setMessage(`Player ${player}: voice is ON. Continue your board.`);
+   hide(first);hide(second);first=second=null;locked=false;
+   if(onlineMode){player=player%numPlayers+1;updateRosterUI();setMessage(`${onlineRoster[player-1]?.name||("Player "+player)}'s turn.`);broadcastOnlineState();}
+   else{voiceOn();setMessage(`Player ${player}: voice is ON. Continue your board.`);}
   },2200)
  }
 }
@@ -1411,6 +1444,7 @@ function startVocabularyListening(){
 function beginNameChallenge(){
  voiceOff();
  awaitingName=true;answerArmed=false;locked=true;
+ if(onlineMode&&onlineHost)setTimeout(broadcastOnlineState,20);
  $("promptAnimal").textContent=matchedAnimal.icon;
  const prompt=randomNamingPrompt();
 
@@ -1499,12 +1533,11 @@ function applyNameResult(ok){
    $("namePrompt").style.display="none";
    answerArmed=false;
    first=second=null;
-   if(deck.every(c=>c.matched))finishPlayerGame();
-   else{
-    locked=false;
-    voiceOn();
-    setMessage(`Player ${player}: voice is ON. Choose the next card.`);
-   }
+   if(deck.every(c=>c.matched)){
+    if(onlineMode){finishOnlineSharedGame();}else finishPlayerGame();
+   } else if(onlineMode){
+    player=player%numPlayers+1;locked=false;updateRosterUI();setMessage(`${onlineRoster[player-1]?.name||("Player "+player)}'s turn.`);broadcastOnlineState();
+   } else{locked=false;voiceOn();setMessage(`Player ${player}: voice is ON. Choose the next card.`);}
   },900);
  }else{
   playerMismatches++;
@@ -1518,11 +1551,9 @@ function applyNameResult(ok){
   setTimeout(()=>{
    $("namePrompt").style.display="none";
    answerArmed=false;
-   hide(first);hide(second);
-   first=second=null;
-   locked=false;
-   voiceOn();
-   setMessage(`Player ${player}: voice is ON. Continue your board.`);
+   hide(first);hide(second);first=second=null;locked=false;
+   if(onlineMode){player=player%numPlayers+1;updateRosterUI();setMessage(`${onlineRoster[player-1]?.name||("Player "+player)}'s turn.`);broadcastOnlineState();}
+   else{voiceOn();setMessage(`Player ${player}: voice is ON. Continue your board.`);}
   },900);
  }
 }
@@ -1555,6 +1586,13 @@ function finishPlayerGame(){
   finishGame();
  }
 }
+function finishOnlineSharedGame(){
+ voiceOff();gameStarted=false;
+ const ranked=onlineRoster.map((p,i)=>({name:p.name,score:scores[i+1]||0})).sort((a,b)=>b.score-a.score);
+ const rows=ranked.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}${i===0?" 🏆":""}</td><td>${r.score}</td></tr>`).join("");
+ $("scoreContent").innerHTML=`<h2>🏆 ${ranked[0]?.name||"Winner"}</h2><p>Online ranking is based on successful matches.</p><table class="scoreTable"><thead><tr><th>Rank</th><th>Player</th><th>Matches</th></tr></thead><tbody>${rows}</tbody></table>`;
+ $("scoreScreen").style.display="flex";if(onlineHost)onlineSendAll({type:"state",...serializeOnlineState(),finished:true});
+}
 function finishGame(){
  voiceOff();gameStarted=false;
  const ranked=[...playerResults].sort((a,b)=>a.mismatches-b.mismatches || a.time-b.time);
@@ -1571,10 +1609,97 @@ function finishGame(){
  $("scoreScreen").style.display="flex";
  speak(`Player ${winner.player} is the winner.`);
 }
+
+// Context-aware, forgiving card-number recognition.
+// Because only the currently visible card numbers are valid, we can safely infer
+// the intended card from imperfect speech-recognition transcripts.
+function normalizeCardSpeech(s){
+ return String(s||"").toLowerCase()
+  .replace(/[’']/g,"")
+  .replace(/[-–—]/g," ")
+  .replace(/[.,!?;:]/g," ")
+  .replace(/\b(the|please|card|number|open|choose|show|select|pick|turn|flip|reveal|press|click|i|want|want to|give me)\b/g," ")
+  .replace(/\s+/g," ").trim();
+}
+function editDistance(a,b){
+ a=String(a); b=String(b);
+ const dp=Array(b.length+1).fill(0).map((_,j)=>j);
+ for(let i=1;i<=a.length;i++){
+  let prev=dp[0]; dp[0]=i;
+  for(let j=1;j<=b.length;j++){
+   const old=dp[j];
+   dp[j]=Math.min(dp[j]+1,dp[j-1]+1,prev+(a[i-1]===b[j-1]?0:1));
+   prev=old;
+  }
+ }
+ return dp[b.length];
+}
+function spokenFormsForCard(n){
+ const words=numberToWords(n).toLowerCase();
+ const compact=words.replace(/\s+/g,"");
+ const forms=new Set([String(n),words,compact]);
+
+ // Common ASR variants for tens: "twenty four" can arrive as "24", "twentyfour",
+ // or occasionally with a nearby-sounding final digit.
+ const parts=words.split(/\s+/);
+ if(parts.length===2) forms.add(parts.join("-"));
+
+ // Add conservative pronunciation/ASR confusions for individual digits.
+ const aliases={
+  one:["won"], two:["to","too"], three:["tree"], four:["for","fore"],
+  five:["fife"], six:["sicks"], seven:["sevan"], eight:["ate"], nine:["niner"]
+ };
+ for(const [word,alts] of Object.entries(aliases)){
+  if(parts.includes(word)){
+   for(const alt of alts){
+    forms.add(parts.map(x=>x===word?alt:x).join(" "));
+    forms.add(parts.map(x=>x===word?alt:x).join(""));
+   }
+  }
+ }
+ return [...forms];
+}
+function parseCardForgiving(raw){
+ // Keep the original parser as first choice.
+ const exact=parseCard(raw);
+ if(exact!==null && exact!==undefined &&
+    exact>=startingNumber && exact<startingNumber+deck.length) return exact;
+
+ const q=normalizeCardSpeech(raw);
+ if(!q) return null;
+
+ // Extract any numeric token appearing in a longer transcript.
+ const nums=String(raw).match(/\d{1,4}/g)||[];
+ for(const token of nums){
+  const n=+token;
+  if(n>=startingNumber && n<startingNumber+deck.length) return n;
+ }
+
+ // Compare only against numbers actually present on this board.
+ let best=null, bestScore=Infinity, second=Infinity;
+ for(let n=startingNumber;n<startingNumber+deck.length;n++){
+  for(const form of spokenFormsForCard(n)){
+   const f=normalizeCardSpeech(form);
+   if(!f) continue;
+   const d=editDistance(q,f);
+   const scale=Math.max(q.length,f.length);
+   const score=d/Math.max(1,scale);
+   if(score<bestScore){second=bestScore;bestScore=score;best=n;}
+   else if(score<second) second=score;
+  }
+ }
+
+ // Deliberately forgiving, but require a reasonably clear unique best match.
+ if(best!==null && bestScore<=0.34 && (second-bestScore>=0.055 || bestScore<=0.18)){
+  return best;
+ }
+ return null;
+}
+
 function handleSpeech(text){
  $("transcript").textContent='Heard: “'+text+'”';
  if(awaitingName){if(answerArmed)checkAnimal(text);return}
- let n=parseCard(text);
+ let n=parseCardForgiving(text);
  if(n&&n>=startingNumber&&n<startingNumber+deck.length){
   clearTimeout(cardRetryTimer);
   chooseCard(n);
@@ -1799,5 +1924,124 @@ $("prevT").onclick=()=>{ti=(ti+tut.length-1)%tut.length;showTut();announceTutori
 $("nextT").onclick=()=>{ti=(ti+1)%tut.length;showTut();announceTutorialPage()}
 showTut();
 </script>
+
+<script>
+// Online multiplayer (V95): free peer-to-peer rooms using PeerJS cloud signalling.
+// The room host is authoritative. If the host closes the page, the room ends.
+let onlineMode=false, onlineHost=false, onlinePeer=null, hostConn=null, peerConns=[];
+let onlineRoomCode="", onlineMe="", onlineRoster=[];
+function ostatus(t){const e=document.getElementById("onlineStatus");if(e)e.textContent=t}
+function makeRoomCode(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+function safeName(){return ($("onlineName").value||"Player").trim().slice(0,20)||"Player"}
+function updateRosterUI(){
+ const text=onlineRoster.map((p,i)=>`${i+1}. ${p.name}`).join(" • ");
+ $("onlinePlayers").textContent=text||"Waiting for players…";
+ if(onlineMode && gameStarted){
+  $("players").innerHTML=onlineRoster.map((p,i)=>`<div class="playerBox ${i+1===player?"active":""}">${p.name}</div>`).join("");
+ }
+}
+function onlineSendAll(msg){peerConns=peerConns.filter(c=>c&&c.open);peerConns.forEach(c=>{try{c.send(msg)}catch(e){}})}
+function serializeOnlineState(){return {
+ type:"state", deck:deck.map(c=>({...c})), player, scores:{...scores},
+ mismatches:playerMismatches,matches:playerSuccessfulMatches, first:first?first.id:null,second:second?second.id:null,
+ locked,awaitingName,matchedAnimal:matchedAnimal?{...matchedAnimal}:null,pairs:+$("pairs").textContent||0,
+ message:$("message").textContent, roster:onlineRoster, size:selectedSize,start:startingNumber,genre:selectedGenre,difficulty:selectedDifficulty
+}}
+function broadcastOnlineState(){if(onlineMode&&onlineHost)onlineSendAll(serializeOnlineState())}
+function applyOnlineState(s){
+ if(!s||s.type!=="state")return;
+ selectedSize=s.size;startingNumber=s.start;selectedGenre=s.genre;selectedDifficulty=s.difficulty;
+ deck=s.deck||[];player=s.player||1;scores=s.scores||{};playerMismatches=s.mismatches||0;playerSuccessfulMatches=s.matches||0;
+ first=s.first!=null?deck.find(c=>c.id===s.first)||null:null;second=s.second!=null?deck.find(c=>c.id===s.second)||null:null;
+ locked=!!s.locked;awaitingName=!!s.awaitingName;matchedAnimal=s.matchedAnimal;onlineRoster=s.roster||onlineRoster;
+ $("pairs").textContent=s.pairs||0;$("pairTotal").textContent=boardSizes[selectedSize].pairs;setMessage(s.message||"");
+ renderBoard();updateRosterUI();updateLiveStats();
+ // Only the active remote player receives the naming controls.
+ const myIndex=onlineRoster.findIndex(x=>x.name===onlineMe)+1;
+ if(awaitingName && myIndex===player && matchedAnimal){
+  $("promptAnimal").textContent=matchedAnimal.icon;$("namePrompt").style.display="flex";
+  $("nameStatus").textContent="Say the object name.";answerArmed=true;paused=false;startVocabularyListening();
+ } else if(!awaitingName){$("namePrompt").style.display="none";answerArmed=false;}
+}
+function attachGuest(c){
+ peerConns.push(c);
+ c.on("data",m=>{
+  if(!onlineHost)return;
+  if(m.type==="hello"){
+   if(!onlineRoster.some(x=>x.peer===c.peer))onlineRoster.push({peer:c.peer,name:(m.name||"Player").slice(0,20)});
+   updateRosterUI();onlineSendAll({type:"roster",roster:onlineRoster,room:onlineRoomCode});
+  }else if(m.type==="choose" && gameStarted){
+   const idx=onlineRoster.findIndex(x=>x.peer===c.peer)+1;if(idx===player){chooseCard(m.id);setTimeout(broadcastOnlineState,30)}
+  }else if(m.type==="nameResult" && gameStarted){
+   const idx=onlineRoster.findIndex(x=>x.peer===c.peer)+1;if(idx===player&&awaitingName){applyNameResult(!!m.ok);setTimeout(broadcastOnlineState,30)}
+  }
+ });
+ c.on("close",()=>{onlineRoster=onlineRoster.filter(x=>x.peer!==c.peer);updateRosterUI();onlineSendAll({type:"roster",roster:onlineRoster,room:onlineRoomCode})});
+}
+function createOnlineRoom(){
+ if(typeof Peer==="undefined"){ostatus("Online library could not load. Check your internet connection.");return}
+ onlineMode=true;onlineHost=true;onlineMe=safeName();onlineRoomCode=makeRoomCode();ostatus("Creating room…");
+ onlinePeer=new Peer("emm-"+onlineRoomCode.toLowerCase());
+ onlinePeer.on("open",id=>{onlineRoster=[{peer:id,name:onlineMe}];$("roomCodeLabel").textContent=onlineRoomCode;$("roomReady").style.display="block";$("onlineStartBtn").style.display="block";ostatus("Room ready — share the code with your friends.");updateRosterUI()});
+ onlinePeer.on("connection",attachGuest);onlinePeer.on("error",e=>ostatus("Room error. Try creating another room."));
+}
+function joinOnlineRoom(){
+ if(typeof Peer==="undefined"){ostatus("Online library could not load. Check your internet connection.");return}
+ onlineMode=true;onlineHost=false;onlineMe=safeName();onlineRoomCode=($('roomCodeInput').value||'').trim().toUpperCase();
+ if(onlineRoomCode.length<4){ostatus("Enter the room code.");return}ostatus("Joining room…");
+ onlinePeer=new Peer();
+ onlinePeer.on("open",()=>{
+  hostConn=onlinePeer.connect("emm-"+onlineRoomCode.toLowerCase(),{reliable:true});
+  hostConn.on("open",()=>{hostConn.send({type:"hello",name:onlineMe});$("roomCodeLabel").textContent=onlineRoomCode;$("roomReady").style.display="block";$("onlineStartBtn").style.display="none";ostatus("Connected. Waiting for the host to start.")});
+  hostConn.on("data",m=>{
+   if(m.type==="roster"){onlineRoster=m.roster||[];updateRosterUI()}
+   else if(m.type==="start"){onlineRoster=m.roster||onlineRoster;selectedSize=m.size;startingNumber=m.start;selectedGenre=m.genre;selectedDifficulty=m.difficulty;gameMode=m.mode;gameStarted=true;paused=true;$("startScreen").style.display="none";$("app").style.display="block";$("onlineRoomBar").style.display="block";$("onlineRoomBar").textContent=`🌐 Room ${onlineRoomCode}`;applyOnlineState(m.state)}
+   else if(m.type==="state")applyOnlineState(m);
+   else if(m.type==="roomEnded"){gameStarted=false;setMessage("The host ended the online room.")}
+  });
+  hostConn.on("close",()=>{ostatus("Disconnected from the host.");if(gameStarted)setMessage("Connection to the host was lost.")});
+ });
+ onlinePeer.on("error",()=>ostatus("Could not join that room. Check the code and try again."));
+}
+function startHostedOnlineGame(){
+ if(!onlineHost)return; if(onlineRoster.length<2){ostatus("At least 2 players are needed.");return}
+ startingNumber=readStartingNumber();gameMode=$("gameMode").value||"practice";numPlayers=onlineRoster.length;
+ animals=pickSix(categories[selectedGenre],selectedDifficulty,boardSizes[selectedSize].pairs);
+ $("startScreen").style.display="none";$("app").style.display="block";$("onlineRoomBar").style.display="block";$("onlineRoomBar").textContent=`🌐 Room ${onlineRoomCode}`;
+ $("transcript").style.display=gameMode==="exam"?"none":"";gameStarted=true;manualVoiceOff=false;paused=true;
+ // Shared board: all players use one board; turns rotate after each completed pair attempt.
+ scores={};for(let i=1;i<=numPlayers;i++)scores[i]=0;playerResults=[];player=1;masterLayout=createMasterLayout();deck=freshDeckFromMaster();
+ first=second=matchedAnimal=null;awaitingName=false;answerArmed=false;locked=false;playerMismatches=0;playerSuccessfulMatches=0;
+ $("pairs").textContent=0;$("pairTotal").textContent=boardSizes[selectedSize].pairs;renderBoard();updateRosterUI();setMessage(`${onlineRoster[0].name}'s turn.`);
+ const state=serializeOnlineState();onlineSendAll({type:"start",roster:onlineRoster,size:selectedSize,start:startingNumber,genre:selectedGenre,difficulty:selectedDifficulty,mode:gameMode,state});broadcastOnlineState();
+}
+// UI mode controls
+$("localPlayBtn").onclick=()=>{onlineMode=false;$("onlineLobby").style.display="none";$("playerCountWrap").style.display="";$("startGame").style.display="block"};
+$("onlinePlayBtn").onclick=()=>{onlineMode=true;$("onlineLobby").style.display="block";$("playerCountWrap").style.display="none";$("startGame").style.display="none"};
+$("showJoinBtn").onclick=()=>{$("joinFields").style.display="block"};
+$("createRoomBtn").onclick=createOnlineRoom;$("joinRoomBtn").onclick=joinOnlineRoom;$("onlineStartBtn").onclick=startHostedOnlineGame;
+// Intercept remote card clicks before the local engine acts.
+const originalChooseCard=chooseCard;
+chooseCard=function(n){
+ if(onlineMode&&!onlineHost){const idx=onlineRoster.findIndex(x=>x.name===onlineMe)+1;if(idx!==player){setMessage("Wait for your turn.");return}if(hostConn&&hostConn.open)hostConn.send({type:"choose",id:n});return}
+ if(onlineMode&&onlineHost){const idx=onlineRoster.findIndex(x=>x.peer===onlinePeer.id)+1;if(idx!==player){setMessage("Wait for your turn.");return}}
+ originalChooseCard(n);if(onlineMode&&onlineHost)setTimeout(broadcastOnlineState,40);
+};
+const originalApplyNameResult=applyNameResult;
+applyNameResult=function(ok){
+ if(onlineMode&&!onlineHost){if(hostConn&&hostConn.open)hostConn.send({type:"nameResult",ok:!!ok});$("namePrompt").style.display="none";return}
+ originalApplyNameResult(ok);if(onlineMode&&onlineHost)setTimeout(broadcastOnlineState,50);
+};
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(err => {
+      console.log("Service worker registration failed:", err);
+    });
+  });
+}
+</script>
+
 </body>
 </html>
