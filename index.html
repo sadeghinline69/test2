@@ -90,10 +90,10 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  .sizeBtn{font-size:12px!important;padding:9px 3px!important}
 }
 
-.objectPhoto{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
-.promptPhoto{width:220px;height:165px;object-fit:cover;border-radius:16px;display:block;margin:8px auto}
-.tutorialPhoto{width:190px;height:140px;object-fit:cover;border-radius:14px;display:block;margin:auto}
-.card.revealed,.card.matched{padding:4px;overflow:hidden}
+.hybridPhoto{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
+.card.revealed .hybridPhoto,.card.matched .hybridPhoto{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px)}
+.promptHybrid{width:220px;height:165px;object-fit:cover;border-radius:16px;margin:8px auto}
+.tutorialHybrid{width:190px;height:140px;object-fit:cover;border-radius:14px;margin:auto}
 </style>
 </head>
 <body>
@@ -439,16 +439,23 @@ const boardSizes={
 };
 let selectedSize="medium";
 let selectedDifficulty="easy";
-function photoURL(name){
- // Real object photograph, deterministically selected for each vocabulary word.
- return "https://loremflickr.com/420/320/"+encodeURIComponent(name)+"/all?lock="+
-   Array.from(name).reduce((a,c)=>a+c.charCodeAt(0),0);
+const photoOnlyObjects=new Set(["quince", "kumquat", "pomelo", "rambutan", "durian", "jackfruit", "mangosteen", "starfruit", "tamarind", "plantain", "breadfruit", "elderberry", "boysenberry", "currant", "loganberry", "longan", "soursop", "salak", "feijoa", "physalis"]);
+function objectPhotoURL(name){
+ return "https://loremflickr.com/420/320/"+encodeURIComponent(name+",fruit")+"/all?lock="+
+  Array.from(name).reduce((a,c)=>a+c.charCodeAt(0),0);
+}
+function useOnlinePhoto(name){return photoOnlyObjects.has(name);}
+function objectVisual(c,cls=""){
+ if(useOnlinePhoto(c.name)){
+  return `<img class="hybridPhoto ${cls}" src="${objectPhotoURL(c.name)}" alt="${c.name}" draggable="false">`;
+ }
+ return `<span class="animal ${cls}">${c.icon}</span>`;
 }
 function pickSix(pool,difficulty=selectedDifficulty,count=null){
  const ranges={easy:[0,20],medium:[20,40],hard:[40,60]};
  const [a,b]=ranges[difficulty]||ranges.easy;
  const needed=count??boardSizes[selectedSize].pairs;
- return shuffle(pool.slice(a,b).map(x=>({...x,photo:photoURL(x.name)}))).slice(0,needed);
+ return shuffle(pool.slice(a,b).map(x=>({...x}))).slice(0,needed);
 }
 let selectedGenre="animals";
 let animals=pickSix(categories.animals,selectedDifficulty);
@@ -526,9 +533,6 @@ function startPlayerBoard(){
  speak(startText);
  setTimeout(()=>{if(gameStarted&&!awaitingName)voiceOn();},1200);
 }
-function objectVisual(c,cls="objectPhoto"){
- return `<img class="${cls}" src="${c.photo}" alt="${c.name}" draggable="false">`;
-}
 function renderBoard(){
  const cfg=boardSizes[selectedSize];
  $("board").style.gridTemplateColumns=`repeat(${cfg.cols}, minmax(0,1fr))`;
@@ -563,7 +567,7 @@ function randomNamingPrompt(){
 function beginNameChallenge(){
  voiceOff();
  awaitingName=true;answerArmed=false;locked=true;
- $("promptAnimal").innerHTML=objectVisual(matchedAnimal,"promptPhoto");
+ $("promptAnimal").innerHTML=objectVisual(matchedAnimal,"promptHybrid");
  const prompt=randomNamingPrompt();
 
  // RED first: vocabulary microphone is OFF while the game gives the instruction.
@@ -818,7 +822,7 @@ function announceTutorialPage(){
   const item=animals.find(a=>a.name.toLowerCase()===d.main.toLowerCase());
   if(item){
    $("tDemo").classList.add("tutorialClickedPreview");
-   $("tDemo").innerHTML=objectVisual(item,"tutorialPhoto");
+   $("tDemo").innerHTML=objectVisual(item,"tutorialHybrid");
   }
  }else if(ti===2){
   const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
@@ -838,7 +842,7 @@ function showTut(){
  let d=tut[ti];
  $("tTitle").textContent=d.title;
  $("tDemo").classList.remove("tutorialClickedPreview");
- if(ti===1 && animals[0]) $("tDemo").innerHTML=objectVisual(animals[0],"tutorialPhoto");
+ if(ti===1 && animals[0]) $("tDemo").innerHTML=objectVisual(animals[0],"tutorialHybrid");
  else $("tDemo").textContent=d.demo;
  $("tText").textContent=d.text;
  $("alts").innerHTML=d.alts.map((x,i)=>`<button class="alt" data-i="${i}">${x}</button>`).join("");
@@ -850,7 +854,7 @@ function showTut(){
    const item=animals.find(a=>a.name.toLowerCase()===phrase.toLowerCase());
    if(item){
     $("tDemo").classList.add("tutorialClickedPreview");
-    $("tDemo").innerHTML=objectVisual(item,"tutorialPhoto");
+    $("tDemo").innerHTML=objectVisual(item,"tutorialHybrid");
    }
   }else if(ti===2){
    const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
