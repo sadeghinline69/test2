@@ -94,7 +94,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 35</div>
+  <div class="badge">Memory Game • Version 38</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Players (1–10)</b><br>
@@ -119,14 +119,14 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <button class="primary sizeBtn" data-size="small">Small<br><small>2 × 3</small></button>
    <button class="primary sizeBtn selectedSize" data-size="medium">Medium<br><small>3 × 4</small></button>
    <button class="primary sizeBtn" data-size="large">Large<br><small>4 × 4</small></button>
-   <button class="primary sizeBtn" data-size="veryLarge">Very Large<br><small>4 × 6</small></button>
+   <button class="primary sizeBtn" data-size="veryLarge">Very Large<br><small>6 × 4</small></button>
   </div>
   <button class="primary" id="startGame">Start Game</button>
  </div>
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 35</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 38</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
  <div id="players" class="players"></div>
@@ -229,14 +229,14 @@ const categories={
   {name:"moose",icon:"🫎"},
   {name:"buffalo",icon:"🐃"},
   {name:"boar",icon:"🐗"},
-  {name:"antelope",icon:"🦌"},
   {name:"flamingo",icon:"🦩"},
   {name:"peacock",icon:"🦚"},
   {name:"parrot",icon:"🦜"},
   {name:"swan",icon:"🦢"},
   {name:"seal",icon:"🦭"},
   {name:"lobster",icon:"🦞"},
-  {name:"squid",icon:"🦑"}
+  {name:"squid",icon:"🦑"},
+  {name:"bat",icon:"🦇"}
  ],
  food:[
   {name:"pizza",icon:"🍕"},
@@ -246,14 +246,14 @@ const categories={
   {name:"egg",icon:"🥚"},
   {name:"bread",icon:"🍞"},
   {name:"rice",icon:"🍚"},
-  {name:"soup",icon:"🍲"},
+  {name:"stew",icon:"🍲"},
   {name:"salad",icon:"🥗"},
-  {name:"chicken",icon:"🍗"},
+  {name:"chicken leg",icon:"🍗"},
   {name:"fries",icon:"🍟"},
   {name:"cake",icon:"🍰"},
   {name:"cookie",icon:"🍪"},
   {name:"chocolate",icon:"🍫"},
-  {name:"ice cream",icon:"🍦"},
+  {name:"ice cream",icon:"🍨"},
   {name:"pancakes",icon:"🥞"},
   {name:"spaghetti",icon:"🍝"},
   {name:"hot dog",icon:"🌭"},
@@ -271,34 +271,24 @@ const categories={
   {name:"noodles",icon:"🍜"},
   {name:"dumpling",icon:"🥟"},
   {name:"curry",icon:"🍛"},
-  {name:"omelette",icon:"🍳"},
-  {name:"meatball",icon:"🧆"},
-  {name:"kebab",icon:"🍢"},
+  {name:"fried egg",icon:"🍳"},
+  {name:"falafel",icon:"🧆"},
   {name:"pie",icon:"🥧"},
   {name:"cupcake",icon:"🧁"},
   {name:"honey",icon:"🍯"},
   {name:"cereal",icon:"🥣"},
-  {name:"yogurt",icon:"🥛"},
-  {name:"croissant",icon:"🥐"},
-  {name:"bagel",icon:"🥯"},
-  {name:"falafel",icon:"🧆"},
-  {name:"paella",icon:"🥘"},
-  {name:"risotto",icon:"🍚"},
-  {name:"lasagna",icon:"🍝"},
-  {name:"quiche",icon:"🥧"},
-  {name:"gnocchi",icon:"🥔"},
-  {name:"hummus",icon:"🫘"},
-  {name:"tofu",icon:"⬜"},
-  {name:"tempura",icon:"🍤"},
-  {name:"ramen",icon:"🍜"},
-  {name:"sashimi",icon:"🍣"},
-  {name:"bruschetta",icon:"🍞"},
-  {name:"focaccia",icon:"🍞"},
-  {name:"couscous",icon:"🍚"},
-  {name:"sauerkraut",icon:"🥬"},
-  {name:"gazpacho",icon:"🥣"},
-  {name:"tiramisu",icon:"🍰"},
-  {name:"macaroon",icon:"🍪"}
+  {name:"milk",icon:"🥛"},
+  {name:"doughnut",icon:"🍩"},
+  {name:"custard",icon:"🍮"},
+  {name:"rice ball",icon:"🍙"},
+  {name:"rice cracker",icon:"🍘"},
+  {name:"bento",icon:"🍱"},
+  {name:"oden",icon:"🍢"},
+  {name:"dango",icon:"🍡"},
+  {name:"fortune cookie",icon:"🥠"},
+  {name:"takeout box",icon:"🥡"},
+  {name:"tamale",icon:"🫔"},
+  {name:"flatbread",icon:"🫓"}
  ],
  sports:[
   {name:"football",icon:"⚽"},
@@ -312,12 +302,12 @@ const categories={
   {name:"cycling",icon:"🚴"},
   {name:"golf",icon:"⛳"},
   {name:"rugby",icon:"🏉"},
-  {name:"hockey",icon:"🏒"},
+  {name:"ice hockey",icon:"🏒"},
   {name:"skiing",icon:"⛷️"},
-  {name:"skating",icon:"⛸️"},
+  {name:"ice skating",icon:"⛸️"},
   {name:"surfing",icon:"🏄"},
   {name:"bowling",icon:"🎳"},
-  {name:"karate",icon:"🥋"},
+  {name:"martial arts",icon:"🥋"},
   {name:"gymnastics",icon:"🤸"},
   {name:"wrestling",icon:"🤼"},
   {name:"badminton",icon:"🏸"},
@@ -333,34 +323,9 @@ const categories={
   {name:"handball",icon:"🤾"},
   {name:"diving",icon:"🤿"},
   {name:"sailing",icon:"⛵"},
-  {name:"canoeing",icon:"🛶"},
   {name:"skateboarding",icon:"🛹"},
-  {name:"triathlon",icon:"🏊"},
-  {name:"judo",icon:"🥋"},
-  {name:"taekwondo",icon:"🥋"},
-  {name:"kickboxing",icon:"🥊"},
-  {name:"billiards",icon:"🎱"},
-  {name:"darts",icon:"🎯"},
-  {name:"lacrosse",icon:"🥍"},
   {name:"curling",icon:"🥌"},
-  {name:"water polo",icon:"🤽"},
-  {name:"squash",icon:"🎾"},
-  {name:"polo",icon:"🏇"},
-  {name:"pentathlon",icon:"🏃"},
-  {name:"decathlon",icon:"🏃"},
-  {name:"biathlon",icon:"⛷️"},
-  {name:"bobsleigh",icon:"🛷"},
-  {name:"luge",icon:"🛷"},
-  {name:"skeleton",icon:"🛷"},
-  {name:"dressage",icon:"🏇"},
-  {name:"equestrian",icon:"🏇"},
-  {name:"orienteering",icon:"🧭"},
-  {name:"windsurfing",icon:"🏄"},
-  {name:"kitesurfing",icon:"🏄"},
-  {name:"powerlifting",icon:"🏋️"},
-  {name:"sumo",icon:"🤼"},
-  {name:"snooker",icon:"🎱"},
-  {name:"racquetball",icon:"🎾"}
+  {name:"water polo",icon:"🤽"}
  ],
  fruit:[
   {name:"apple",icon:"🍎"},
@@ -371,49 +336,16 @@ const categories={
   {name:"watermelon",icon:"🍉"},
   {name:"pear",icon:"🍐"},
   {name:"peach",icon:"🍑"},
-  {name:"cherry",icon:"🍒"},
+  {name:"cherries",icon:"🍒"},
   {name:"pineapple",icon:"🍍"},
   {name:"kiwi",icon:"🥝"},
   {name:"mango",icon:"🥭"},
   {name:"lemon",icon:"🍋"},
   {name:"melon",icon:"🍈"},
-  {name:"blueberry",icon:"🫐"},
+  {name:"blueberries",icon:"🫐"},
   {name:"coconut",icon:"🥥"},
   {name:"avocado",icon:"🥑"},
-  {name:"lime",icon:"🍋"},
-  {name:"apricot",icon:"🍑"},
-  {name:"raspberry",icon:"🍓"},
-  {name:"blackberry",icon:"🫐"},
-  {name:"papaya",icon:"🥭"},
-  {name:"grapefruit",icon:"🍊"},
-  {name:"tangerine",icon:"🍊"},
-  {name:"dragon fruit",icon:"🐉"},
-  {name:"nectarine",icon:"🍑"},
-  ,
-  ,
-  {name:"mulberry",icon:"🫐"},
-  {name:"cantaloupe",icon:"🍈"},
-  {name:"clementine",icon:"🍊"},
-  {name:"mandarin",icon:"🍊"},
-  {name:"quince",icon:"🍐"},
-  {name:"kumquat",icon:"🍊"},
-  {name:"pomelo",icon:"🍊"},
-  {name:"rambutan",icon:"🍒"},
-  {name:"durian",icon:"🍈"},
-  {name:"jackfruit",icon:"🍈"},
-  {name:"mangosteen",icon:"🍇"},
-  {name:"starfruit",icon:"⭐"},
-  {name:"tamarind",icon:"🫘"},
-  {name:"plantain",icon:"🍌"},
-  {name:"breadfruit",icon:"🍈"},
-  {name:"elderberry",icon:"🫐"},
-  {name:"boysenberry",icon:"🫐"},
-  {name:"loganberry",icon:"🫐"},
-  {name:"longan",icon:"🍒"},
-  {name:"soursop",icon:"🍐"},
-  {name:"salak",icon:"🍐"},
-  {name:"feijoa",icon:"🥝"},
-  {name:"physalis",icon:"🍊"}
+  {name:"olive",icon:"🫒"}
  ]
 };
 const boardSizes={
@@ -421,18 +353,19 @@ const boardSizes={
  small:{rows:2,cols:3,pairs:3},
  medium:{rows:3,cols:4,pairs:6},
  large:{rows:4,cols:4,pairs:8},
- veryLarge:{rows:4,cols:6,pairs:12}
+ veryLarge:{rows:6,cols:4,pairs:12}
 };
 let selectedSize="medium";
 let selectedDifficulty="easy";
 function difficultyPool(pool,difficulty){
- // Divide the available emoji vocabulary into three ordered difficulty groups.
- const n=pool.length;
+ // Ignore any empty entries, then divide the real emoji vocabulary into 3 groups.
+ const clean=pool.filter(x=>x && x.name && x.icon);
+ const n=clean.length;
  const cut1=Math.ceil(n/3);
  const cut2=Math.ceil(2*n/3);
- if(difficulty==="easy") return pool.slice(0,cut1);
- if(difficulty==="medium") return pool.slice(cut1,cut2);
- return pool.slice(cut2);
+ if(difficulty==="easy") return clean.slice(0,cut1);
+ if(difficulty==="medium") return clean.slice(cut1,cut2);
+ return clean.slice(cut2);
 }
 function pickSix(pool,difficulty=selectedDifficulty,count=null){
  const needed=count??boardSizes[selectedSize].pairs;
@@ -443,7 +376,7 @@ function pickSix(pool,difficulty=selectedDifficulty,count=null){
  // borrow unused emoji objects from the other difficulty levels.
  if(chosen.length<needed){
   const used=new Set(chosen.map(x=>x.name));
-  const fallback=pool.filter(x=>!used.has(x.name)).map(x=>({...x}));
+  const fallback=pool.filter(x=>x && x.name && x.icon && !used.has(x.name)).map(x=>({...x}));
   chosen=chosen.concat(shuffle(fallback).slice(0,needed-chosen.length));
  }
  return chosen;
