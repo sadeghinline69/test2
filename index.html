@@ -686,6 +686,28 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  color:#fff3a6!important;
 }
 
+
+/* Dark green title */
+#startScreen .big{
+ color:#1f6b3a!important;
+}
+
+
+/* Strong black title, slightly larger */
+#startScreen .big{
+ color:#000000!important;
+ font-size:clamp(22px,6.6vw,29px)!important;
+ font-weight:900!important;
+ white-space:nowrap!important;
+ letter-spacing:-0.75px!important;
+}
+@media (max-width:360px){
+ #startScreen .big{
+  font-size:19px!important;
+  letter-spacing:-0.9px!important;
+ }
+}
+
 </style>
 </head>
 <body>
@@ -738,7 +760,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <button type="button" id="otherSettingsBtn">Other Settings ▾</button>
    <div id="otherSettingsPanel">
     <h2>Starting Number</h2>
-    <input id="startingNumber" class="setupSelect" type="number" value="20" min="1" step="1"
+    <input id="startingNumber" class="setupSelect" type="number" value="21" min="1" step="1"
      inputmode="numeric" aria-label="Starting card number" style="box-sizing:border-box;margin-bottom:10px">
     <h2>Mode</h2>
     <select id="gameMode" class="setupSelect" aria-label="Game mode" style="box-sizing:border-box;margin-bottom:8px">
@@ -1193,7 +1215,7 @@ let selectedGenre="animals";
 let animals=pickSix(categories.animals,selectedDifficulty);
 let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
 let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false,manualVoiceOff=false;
-let startingNumber=20;
+let startingNumber=21;
 let gameMode="practice";
 let masterLayout=null, playerResults=[];
 let playerStartTime=0, playerMismatches=0, playerSuccessfulMatches=0, liveTimerId=null;
@@ -1265,7 +1287,7 @@ function numberToWords(n){
 function titleNumber(n){return numberToWords(n).replace(/\b\w/g,c=>c.toUpperCase())}
 function readStartingNumber(){
  let n=parseInt($("startingNumber").value,10);
- if(!Number.isFinite(n))n=20;
+ if(!Number.isFinite(n))n=21;
  n=Math.max(1,Math.min(9976,n)); // +23 keeps the largest board at or below 9999
  $("startingNumber").value=n;
  return n;
