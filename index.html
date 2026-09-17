@@ -1380,7 +1380,11 @@ function startPlayerBoard(){
 function renderBoard(){
  const cfg=boardSizes[selectedSize];
  $("board").style.gridTemplateColumns=`repeat(${cfg.cols}, minmax(0,1fr))`;
- $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
+ $("board").innerHTML=deck.map(c=>{
+  const isOpen=c.matched || (first&&c.id===first.id) || (second&&c.id===second.id);
+  const cls=c.matched?"matched":(isOpen?"revealed":"");
+  return `<button class="card ${cls}" data-id="${c.id}">${isOpen?`<span class="animal">${c.icon}</span>`:c.id}</button>`;
+ }).join("");
  document.querySelectorAll(".card").forEach(b=>b.onclick=()=>chooseCard(+b.dataset.id));
 }
 function reveal(c){let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.add("revealed");b.innerHTML=`<span class="animal">${c.icon}</span>`}
@@ -1948,6 +1952,16 @@ function serializeOnlineState(){return {
  message:$("message").textContent, roster:onlineRoster, size:selectedSize,start:startingNumber,genre:selectedGenre,difficulty:selectedDifficulty
 }}
 function broadcastOnlineState(){if(onlineMode&&onlineHost)onlineSendAll(serializeOnlineState())}
+function concealTransientOnlineCardsForViewer(viewerIndex){
+ // Online privacy: the two cards being tried are visible only to the player
+ // whose turn it is. Already matched cards remain visible to everyone.
+ if(!onlineMode || viewerIndex===player)return;
+ [first,second].filter(Boolean).forEach(c=>{
+  if(c.matched)return;
+  const b=document.querySelector(`.card[data-id="${c.id}"]`);
+  if(b){b.classList.remove("revealed");b.innerHTML=c.id;}
+ });
+}
 function applyOnlineState(s){
  if(!s||s.type!=="state")return;
  selectedSize=s.size;startingNumber=s.start;selectedGenre=s.genre;selectedDifficulty=s.difficulty;
@@ -1956,8 +1970,9 @@ function applyOnlineState(s){
  locked=!!s.locked;awaitingName=!!s.awaitingName;matchedAnimal=s.matchedAnimal;onlineRoster=s.roster||onlineRoster;
  $("pairs").textContent=s.pairs||0;$("pairTotal").textContent=boardSizes[selectedSize].pairs;setMessage(s.message||"");
  renderBoard();updateRosterUI();updateLiveStats();
- // Only the active remote player receives the naming controls.
  const myIndex=onlineRoster.findIndex(x=>x.name===onlineMe)+1;
+ concealTransientOnlineCardsForViewer(myIndex);
+ // Only the active remote player receives the naming controls.
  if(awaitingName && myIndex===player && matchedAnimal){
   $("promptAnimal").textContent=matchedAnimal.icon;$("namePrompt").style.display="flex";
   $("nameStatus").textContent="Say the object name.";answerArmed=true;paused=false;startVocabularyListening();
@@ -1971,7 +1986,8 @@ function attachGuest(c){
    if(!onlineRoster.some(x=>x.peer===c.peer))onlineRoster.push({peer:c.peer,name:(m.name||"Player").slice(0,20)});
    updateRosterUI();onlineSendAll({type:"roster",roster:onlineRoster,room:onlineRoomCode});
   }else if(m.type==="choose" && gameStarted){
-   const idx=onlineRoster.findIndex(x=>x.peer===c.peer)+1;if(idx===player){chooseCard(m.id);setTimeout(broadcastOnlineState,30)}
+   const idx=onlineRoster.findIndex(x=>x.peer===c.peer)+1;
+   if(idx===player)hostProcessOnlineCard(m.id,idx);
   }else if(m.type==="nameResult" && gameStarted){
    const idx=onlineRoster.findIndex(x=>x.peer===c.peer)+1;if(idx===player&&awaitingName){applyNameResult(!!m.ok);setTimeout(broadcastOnlineState,30)}
   }
@@ -2020,12 +2036,34 @@ $("localPlayBtn").onclick=()=>{onlineMode=false;$("onlineLobby").style.display="
 $("onlinePlayBtn").onclick=()=>{onlineMode=true;$("onlineLobby").style.display="block";$("playerCountWrap").style.display="none";$("startGame").style.display="none"};
 $("showJoinBtn").onclick=()=>{$("joinFields").style.display="block"};
 $("createRoomBtn").onclick=createOnlineRoom;$("joinRoomBtn").onclick=joinOnlineRoom;$("onlineStartBtn").onclick=startHostedOnlineGame;
-// Intercept remote card clicks before the local engine acts.
+// Online turn handling (V98): one player chooses BOTH cards of the pair.
+// The turn changes only after the complete pair attempt has been resolved.
 const originalChooseCard=chooseCard;
+function hostProcessOnlineCard(n,actorIdx){
+ if(!onlineMode||!onlineHost||actorIdx!==player||locked||awaitingName)return;
+ originalChooseCard(n);
+ // If a guest is choosing, the host is only the authority: do not reveal
+ // that guest's temporary card choices on the host's screen.
+ const hostIdx=onlineRoster.findIndex(x=>x.peer===onlinePeer.id)+1;
+ if(actorIdx!==hostIdx)concealTransientOnlineCardsForViewer(hostIdx);
+ // Keep the same player active after the first card. The normal game logic
+ // advances to the next player only after the second card/pair is resolved.
+ setTimeout(broadcastOnlineState,40);
+}
 chooseCard=function(n){
- if(onlineMode&&!onlineHost){const idx=onlineRoster.findIndex(x=>x.name===onlineMe)+1;if(idx!==player){setMessage("Wait for your turn.");return}if(hostConn&&hostConn.open)hostConn.send({type:"choose",id:n});return}
- if(onlineMode&&onlineHost){const idx=onlineRoster.findIndex(x=>x.peer===onlinePeer.id)+1;if(idx!==player){setMessage("Wait for your turn.");return}}
- originalChooseCard(n);if(onlineMode&&onlineHost)setTimeout(broadcastOnlineState,40);
+ if(onlineMode&&!onlineHost){
+  const idx=onlineRoster.findIndex(x=>x.name===onlineMe)+1;
+  if(idx!==player){setMessage("Wait for your turn.");return}
+  if(hostConn&&hostConn.open)hostConn.send({type:"choose",id:n});
+  return;
+ }
+ if(onlineMode&&onlineHost){
+  const idx=onlineRoster.findIndex(x=>x.peer===onlinePeer.id)+1;
+  if(idx!==player){setMessage("Wait for your turn.");return}
+  hostProcessOnlineCard(n,idx);
+  return;
+ }
+ originalChooseCard(n);
 };
 const originalApplyNameResult=applyNameResult;
 applyNameResult=function(ok){
