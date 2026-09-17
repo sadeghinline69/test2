@@ -103,12 +103,19 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  font-size:18px;font-weight:700;text-align:center;cursor:pointer;
 }
 .playerSelect:focus{outline:3px solid rgba(82,104,232,.22);border-color:#5268e8}
+
+.setupSelect{
+ width:min(320px,92%);min-height:54px;padding:10px 44px 10px 16px;margin:8px 0 18px;
+ border-radius:12px;border:2px solid #bbc7dd;background:#fff;
+ font-size:17px;font-weight:700;text-align:center;cursor:pointer;
+}
+.setupSelect:focus{outline:3px solid rgba(82,104,232,.22);border-color:#5268e8}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 46</div>
+  <div class="badge">Memory Game • Version 48</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Number of Players</b><br>
@@ -126,12 +133,18 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    </select>
   </label>
   <h2 style="margin:12px 0 8px">Choose a Category</h2>
-  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:12px 0 18px">
-   <button class="primary setupGenre" data-genre="food">🍽️ Food</button>
-   <button class="primary setupGenre selectedGenre" data-genre="animals">🐾 Animals</button>
-   <button class="primary setupGenre" data-genre="sports">🏅 Sports</button>
-   <button class="primary setupGenre" data-genre="fruit">🍎 Fruit</button>
-  </div>
+  <select id="categorySelect" class="setupSelect" aria-label="Choose a category">
+   <option value="animals" selected>🐾 Animals</option>
+   <option value="food">🍽️ Food</option>
+   <option value="sports">🏅 Sports</option>
+   <option value="fruit">🍎 Fruit</option>
+   <option value="transportation">🚗 Transportation</option>
+   <option value="clothes">👕 Clothes & Accessories</option>
+   <option value="home">🏠 Home & Objects</option>
+   <option value="plants">🥦 Vegetables & Plants</option>
+   <option value="nature">🌦️ Weather & Nature</option>
+   <option value="music">🎵 Music</option>
+  </select>
   <h2 style="margin:16px 0 8px">Difficulty Level</h2>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 20px">
    <button class="primary difficultyBtn selectedDifficulty" data-difficulty="easy">Easy</button>
@@ -151,7 +164,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 46</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 48</span></h2>
   <div class="stats"><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
 <span id="currentPlayer" style="display:none">1</span>
@@ -377,6 +390,180 @@ const categories={
   {name:"coconut",icon:"🥥"},
   {name:"avocado",icon:"🥑"},
   {name:"olive",icon:"🫒"}
+ ],
+ transportation:[
+  {name:"car",icon:"🚗"},
+  {name:"taxi",icon:"🚕"},
+  {name:"bus",icon:"🚌"},
+  {name:"trolleybus",icon:"🚎"},
+  {name:"race car",icon:"🏎️"},
+  {name:"police car",icon:"🚓"},
+  {name:"ambulance",icon:"🚑"},
+  {name:"fire engine",icon:"🚒"},
+  {name:"minibus",icon:"🚐"},
+  {name:"truck",icon:"🚚"},
+  {name:"tractor",icon:"🚜"},
+  {name:"motorcycle",icon:"🏍️"},
+  {name:"scooter",icon:"🛵"},
+  {name:"bicycle",icon:"🚲"},
+  {name:"kick scooter",icon:"🛴"},
+  {name:"skateboard",icon:"🛹"},
+  {name:"train",icon:"🚆"},
+  {name:"tram",icon:"🚊"},
+  {name:"monorail",icon:"🚝"},
+  {name:"airplane",icon:"✈️"},
+  {name:"helicopter",icon:"🚁"},
+  {name:"rocket",icon:"🚀"},
+  {name:"satellite",icon:"🛰️"},
+  {name:"sailboat",icon:"⛵"},
+  {name:"speedboat",icon:"🚤"},
+  {name:"ship",icon:"🚢"},
+  {name:"canoe",icon:"🛶"},
+  {name:"ferry",icon:"⛴️"}
+ ],
+ clothes:[
+  {name:"glasses",icon:"👓"},
+  {name:"sunglasses",icon:"🕶️"},
+  {name:"goggles",icon:"🥽"},
+  {name:"lab coat",icon:"🥼"},
+  {name:"safety vest",icon:"🦺"},
+  {name:"necktie",icon:"👔"},
+  {name:"T-shirt",icon:"👕"},
+  {name:"jeans",icon:"👖"},
+  {name:"scarf",icon:"🧣"},
+  {name:"gloves",icon:"🧤"},
+  {name:"coat",icon:"🧥"},
+  {name:"socks",icon:"🧦"},
+  {name:"dress",icon:"👗"},
+  {name:"kimono",icon:"👘"},
+  {name:"sari",icon:"🥻"},
+  {name:"swimsuit",icon:"🩱"},
+  {name:"briefs",icon:"🩲"},
+  {name:"shorts",icon:"🩳"},
+  {name:"bikini",icon:"👙"},
+  {name:"purse",icon:"👛"},
+  {name:"handbag",icon:"👜"},
+  {name:"backpack",icon:"🎒"},
+  {name:"shoe",icon:"👞"},
+  {name:"running shoe",icon:"👟"},
+  {name:"hiking boot",icon:"🥾"},
+  {name:"high heel",icon:"👠"},
+  {name:"sandal",icon:"👡"},
+  {name:"ballet shoes",icon:"🩰"},
+  {name:"boot",icon:"👢"},
+  {name:"crown",icon:"👑"},
+  {name:"hat",icon:"👒"},
+  {name:"top hat",icon:"🎩"},
+  {name:"graduation cap",icon:"🎓"},
+  {name:"cap",icon:"🧢"},
+  {name:"military helmet",icon:"🪖"}
+ ],
+ home:[
+  {name:"chair",icon:"🪑"},
+  {name:"bed",icon:"🛏️"},
+  {name:"couch",icon:"🛋️"},
+  {name:"door",icon:"🚪"},
+  {name:"window",icon:"🪟"},
+  {name:"mirror",icon:"🪞"},
+  {name:"toilet",icon:"🚽"},
+  {name:"bathtub",icon:"🛁"},
+  {name:"shower",icon:"🚿"},
+  {name:"soap",icon:"🧼"},
+  {name:"toothbrush",icon:"🪥"},
+  {name:"razor",icon:"🪒"},
+  {name:"broom",icon:"🧹"},
+  {name:"basket",icon:"🧺"},
+  {name:"bucket",icon:"🪣"},
+  {name:"sponge",icon:"🧽"},
+  {name:"key",icon:"🔑"},
+  {name:"lock",icon:"🔒"},
+  {name:"bell",icon:"🔔"},
+  {name:"clock",icon:"🕰️"},
+  {name:"alarm clock",icon:"⏰"},
+  {name:"television",icon:"📺"},
+  {name:"radio",icon:"📻"},
+  {name:"telephone",icon:"☎️"},
+  {name:"mobile phone",icon:"📱"},
+  {name:"computer",icon:"💻"},
+  {name:"keyboard",icon:"⌨️"},
+  {name:"printer",icon:"🖨️"},
+  {name:"camera",icon:"📷"},
+  {name:"light bulb",icon:"💡"},
+  {name:"flashlight",icon:"🔦"},
+  {name:"candle",icon:"🕯️"},
+  {name:"wastebasket",icon:"🗑️"},
+  {name:"thermometer",icon:"🌡️"},
+  {name:"fire extinguisher",icon:"🧯"}
+ ],
+ plants:[
+  {name:"carrot",icon:"🥕"},
+  {name:"corn",icon:"🌽"},
+  {name:"broccoli",icon:"🥦"},
+  {name:"garlic",icon:"🧄"},
+  {name:"onion",icon:"🧅"},
+  {name:"potato",icon:"🥔"},
+  {name:"tomato",icon:"🍅"},
+  {name:"cucumber",icon:"🥒"},
+  {name:"pepper",icon:"🫑"},
+  {name:"mushroom",icon:"🍄"},
+  {name:"beans",icon:"🫘"},
+  {name:"peanuts",icon:"🥜"},
+  {name:"pea pod",icon:"🫛"},
+  {name:"eggplant",icon:"🍆"},
+  {name:"leafy green",icon:"🥬"},
+  {name:"ginger",icon:"🫚"},
+  {name:"flower",icon:"🌸"},
+  {name:"rose",icon:"🌹"},
+  {name:"sunflower",icon:"🌻"},
+  {name:"tulip",icon:"🌷"},
+  {name:"hibiscus",icon:"🌺"},
+  {name:"lotus",icon:"🪷"},
+  {name:"tree",icon:"🌳"},
+  {name:"palm tree",icon:"🌴"},
+  {name:"cactus",icon:"🌵"},
+  {name:"herb",icon:"🌿"},
+  {name:"clover",icon:"☘️"},
+  {name:"seedling",icon:"🌱"},
+  {name:"fallen leaf",icon:"🍂"},
+  {name:"maple leaf",icon:"🍁"}
+ ],
+ music:[
+  {name:"microphone",icon:"🎤"},
+  {name:"headphones",icon:"🎧"},
+  {name:"radio",icon:"📻"},
+  {name:"saxophone",icon:"🎷"},
+  {name:"accordion",icon:"🪗"},
+  {name:"guitar",icon:"🎸"},
+  {name:"keyboard",icon:"🎹"},
+  {name:"trumpet",icon:"🎺"},
+  {name:"violin",icon:"🎻"},
+  {name:"banjo",icon:"🪕"},
+  {name:"drum",icon:"🥁"},
+  {name:"maracas",icon:"🪇"},
+  {name:"flute",icon:"🪈"},
+  {name:"harp",icon:"🪉"}
+ ],
+ nature:[
+  {name:"sun",icon:"☀️"},
+  {name:"moon",icon:"🌙"},
+  {name:"star",icon:"⭐"},
+  {name:"cloud",icon:"☁️"},
+  {name:"rain",icon:"🌧️"},
+  {name:"snow",icon:"🌨️"},
+  {name:"lightning",icon:"🌩️"},
+  {name:"rainbow",icon:"🌈"},
+  {name:"fire",icon:"🔥"},
+  {name:"volcano",icon:"🌋"},
+  {name:"mountain",icon:"⛰️"},
+  {name:"wave",icon:"🌊"},
+  {name:"tornado",icon:"🌪️"},
+  {name:"snowman",icon:"☃️"},
+  {name:"fog",icon:"🌫️"},
+  {name:"wind",icon:"💨"},
+  {name:"comet",icon:"☄️"},
+  {name:"earth",icon:"🌍"},
+  {name:"desert",icon:"🏜️"},
+  {name:"island",icon:"🏝️"}
  ]
 };
 const boardSizes={
@@ -743,10 +930,9 @@ $("voiceToggle").onclick=()=>{
  if(paused)voiceOn();
  else{voiceOff();setMessage("Voice is off. Press the Voice button when you are ready.");}
 }
-document.querySelectorAll(".setupGenre").forEach(btn=>btn.onclick=()=>{
- selectedGenre=btn.dataset.genre;
- document.querySelectorAll(".setupGenre").forEach(b=>b.classList.toggle("selectedGenre",b===btn));
-});
+$("categorySelect").onchange=()=>{
+ selectedGenre=$("categorySelect").value;
+};
 document.querySelectorAll(".difficultyBtn").forEach(btn=>btn.onclick=()=>{
  selectedDifficulty=btn.dataset.difficulty;
  document.querySelectorAll(".difficultyBtn").forEach(b=>b.classList.toggle("selectedDifficulty",b===btn));
