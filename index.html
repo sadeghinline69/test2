@@ -73,12 +73,15 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 .scoreTable{width:100%;border-collapse:collapse;margin:18px 0}
 .scoreTable th,.scoreTable td{padding:11px 8px;border-bottom:1px solid #dce3f4;text-align:center}
 .scoreTable th{background:#eef3ff}
+
+#answerBtn.vocabOff{background:#d9363e!important;color:white!important;border-color:#d9363e!important}
+#answerBtn.vocabOn{background:#1f9d55!important;color:white!important;border-color:#1f9d55!important}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="panel">
-  <div class="badge">Memory Game • Version 21</div>
+  <div class="badge">Memory Game • Version 23</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose cards by saying their numbers. Match two animals, then say the animal's name to earn the point.</p>
   <label><b>Players (1–10)</b><br><input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd"></label><br>
@@ -88,7 +91,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 <div id="genreScreen" class="screen" style="display:none">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 21</div>
+  <div class="badge">Memory Game • Version 23</div>
   <h1>Choose a Category</h1>
   <p id="genrePlayersText"></p>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0">
@@ -101,7 +104,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 </div>
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 21</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 23</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
  </div>
  <div id="players" class="players"></div>
@@ -245,14 +248,49 @@ function chooseCard(n){
  if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,550)}
  else{playerMismatches++;updateLiveStats();setMessage("Not a match.");setTimeout(()=>speak("Not a match."),650);setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOn();setMessage(`Player ${player}: voice is ON. Continue your board.`)},1500)}
 }
+const namingPrompts=[
+ "Say the name of the object.",
+ "Please say the name of the object.",
+ "What is this object?",
+ "Can you name this object?",
+ "Tell me the name of this object.",
+ "Say what you see."
+];
+let lastNamingPrompt=-1;
+function randomNamingPrompt(){
+ let i;
+ do{i=Math.floor(Math.random()*namingPrompts.length)}while(namingPrompts.length>1&&i===lastNamingPrompt);
+ lastNamingPrompt=i;
+ return namingPrompts[i];
+}
 function beginNameChallenge(){
  voiceOff();
  awaitingName=true;answerArmed=false;locked=true;
  $("promptAnimal").textContent=matchedAnimal.icon;
- $("nameStatus").textContent="Press the button when you are ready.";
- $("answerBtn").disabled=false;
+ const prompt=randomNamingPrompt();
+
+ // RED first: vocabulary microphone is OFF while the game gives the instruction.
+ const ab=$("answerBtn");
+ ab.disabled=true;
+ ab.classList.remove("vocabOn");
+ ab.classList.add("vocabOff");
+ ab.textContent="🔴 Voice OFF";
+ $("nameStatus").textContent=prompt;
  $("namePrompt").style.display="flex";
- setMessage("");
+ setMessage(prompt);
+ speak(prompt);
+
+ // After the instruction, GREEN: automatically start listening for the object's name.
+ setTimeout(()=>{
+  if(!awaitingName)return;
+  answerArmed=true;
+  ab.classList.remove("vocabOff");
+  ab.classList.add("vocabOn");
+  ab.textContent="🟢 Voice ON — Say the Name";
+  $("nameStatus").textContent="Listening… say the object name.";
+  try{if(running)recognition.stop()}catch(e){}
+  setTimeout(()=>{if(recognition){try{recognition.lang="en-US";recognition.start()}catch(e){}}},180);
+ },1650);
 }
 function editDistance(a,b){
  const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
@@ -279,6 +317,12 @@ function animalAnswerAccepted(text,name){
 }
 function checkAnimal(text){
  answerArmed=false;
+ try{if(running)recognition.stop()}catch(e){}
+ paused=true;updateVoiceButton();
+ const ab=$("answerBtn");
+ ab.classList.remove("vocabOn");
+ ab.classList.add("vocabOff");
+ ab.textContent="🔴 Voice OFF";
  let s=normalize(text),name=matchedAnimal.name;
  let ok=animalAnswerAccepted(s,name);
 
