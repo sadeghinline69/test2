@@ -477,6 +477,97 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  }
 }
 
+
+/* Main setup title: one line and same heading color as Category/Difficulty */
+#startScreen h1{
+ display:flex!important;
+ flex-wrap:nowrap!important;
+ align-items:center!important;
+ justify-content:center!important;
+ gap:4px!important;
+ width:100%!important;
+ max-width:none!important;
+ white-space:nowrap!important;
+ word-break:keep-all!important;
+ overflow-wrap:normal!important;
+ hyphens:none!important;
+ color:#344054!important;
+ font-size:clamp(13px,4.35vw,20px)!important;
+ line-height:1!important;
+ letter-spacing:-0.45px!important;
+ padding:0!important;
+ margin:2px 0 6px!important;
+}
+#startScreen h1 *{
+ white-space:nowrap!important;
+ word-break:keep-all!important;
+ overflow-wrap:normal!important;
+ color:#344054!important;
+}
+@media (max-width:360px){
+ #startScreen h1{
+  font-size:13px!important;
+  letter-spacing:-0.65px!important;
+  gap:2px!important;
+ }
+}
+
+
+/* Correct setup title element */
+#startScreen .big{
+ display:block!important;
+ width:100%!important;
+ max-width:100%!important;
+ box-sizing:border-box!important;
+ white-space:nowrap!important;
+ word-break:keep-all!important;
+ overflow-wrap:normal!important;
+ hyphens:none!important;
+ text-align:center!important;
+ color:#344054!important;
+ font-size:clamp(15px,4.6vw,21px)!important;
+ line-height:1.05!important;
+ letter-spacing:-0.45px!important;
+ margin:2px 0 6px!important;
+}
+@media (max-width:360px){
+ #startScreen .big{
+  font-size:14px!important;
+  letter-spacing:-0.65px!important;
+ }
+}
+
+
+/* Refined main title */
+#startScreen .big{
+ color:#3f66e8!important;
+ font-size:clamp(13px,4.1vw,18px)!important;
+ font-weight:800!important;
+ white-space:nowrap!important;
+ letter-spacing:-0.25px!important;
+}
+@media (max-width:360px){
+ #startScreen .big{
+  font-size:13px!important;
+ }
+}
+
+
+/* Larger main title while keeping it on one line */
+#startScreen .big{
+ color:#3f66e8!important;
+ font-size:clamp(17px,5.4vw,23px)!important;
+ font-weight:800!important;
+ white-space:nowrap!important;
+ letter-spacing:-0.45px!important;
+}
+@media (max-width:360px){
+ #startScreen .big{
+  font-size:16px!important;
+  letter-spacing:-0.65px!important;
+ }
+}
+
 </style>
 </head>
 <body>
