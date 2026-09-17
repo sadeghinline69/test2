@@ -78,7 +78,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <body>
 <div id="startScreen" class="screen">
  <div class="panel">
-  <div class="badge">Memory Game • Version 19</div>
+  <div class="badge">Memory Game • Version 21</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose cards by saying their numbers. Match two animals, then say the animal's name to earn the point.</p>
   <label><b>Players (1–10)</b><br><input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd"></label><br>
@@ -88,7 +88,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 <div id="genreScreen" class="screen" style="display:none">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 19</div>
+  <div class="badge">Memory Game • Version 21</div>
   <h1>Choose a Category</h1>
   <p id="genrePlayersText"></p>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0">
@@ -101,7 +101,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 </div>
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 19</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 21</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
  </div>
  <div id="players" class="players"></div>
@@ -227,8 +227,9 @@ function startPlayerBoard(){
  updateLiveStats();
  liveTimerId=setInterval(updateLiveStats,100);
  const startText=`Player ${player}, start your game.`;
- setMessage(`${startText} Turn Voice ON when you are ready.`);
+ setMessage(startText);
  speak(startText);
+ setTimeout(()=>{if(gameStarted&&!awaitingName)voiceOn();},1200);
 }
 function renderBoard(){
  $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
@@ -242,7 +243,7 @@ function chooseCard(n){
  reveal(c);speak(c.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
  second=c;locked=true;
  if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,550)}
- else{playerMismatches++;updateLiveStats();setMessage("Not a match.");setTimeout(()=>speak("Not a match."),650);setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOff();setMessage(`Player ${player}: turn Voice ON and continue your board.`)},1500)}
+ else{playerMismatches++;updateLiveStats();setMessage("Not a match.");setTimeout(()=>speak("Not a match."),650);setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOn();setMessage(`Player ${player}: voice is ON. Continue your board.`)},1500)}
 }
 function beginNameChallenge(){
  voiceOff();
@@ -299,12 +300,15 @@ function checkAnimal(text){
    if(deck.every(c=>c.matched))finishPlayerGame();
    else{
     locked=false;
-    voiceOff(); setMessage(`Player ${player}: turn Voice ON when you are ready.`);
+    voiceOn();
+    setMessage(`Player ${player}: voice is ON. Choose the next card.`);
    }
   },900);
  }else{
+  playerMismatches++;
+  updateLiveStats();
   $("nameStatus").textContent="Wrong";
-  setMessage("Wrong — no point.");
+  setMessage("Wrong — counted as 1 unmatched pair.");
   speak("Wrong");
   awaitingName=false;
   locked=true;
@@ -315,8 +319,8 @@ function checkAnimal(text){
    hide(first);hide(second);
    first=second=null;
    locked=false;
-   voiceOff();
-   setMessage(`Player ${player}: no point. Turn Voice ON and continue your board.`);
+   voiceOn();
+   setMessage(`Player ${player}: voice is ON. Continue your board.`);
   },900);
  }
 }
