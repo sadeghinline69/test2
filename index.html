@@ -117,12 +117,59 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 }
 .creatorCredit strong{color:#344054}
 .creatorCredit span{font-size:12px}
+
+#startGame{
+ background:#d92d20;
+ border-color:#d92d20;
+ color:white;
+}
+#startGame:hover{background:#b42318;border-color:#b42318}
+
+#startScreen h2{
+ font-size:17px;
+ line-height:1.15;
+ margin-top:9px !important;
+ margin-bottom:5px !important;
+}
+#startScreen .creatorCredit{
+ margin-top:12px;
+ padding-top:9px;
+ line-height:1.4;
+}
+
+/* Compact tutorial lists for large boards */
+#alts.tutorialManyItems{
+ display:grid;
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:5px;
+ width:100%;
+}
+#alts.tutorialManyItems .alt{
+ font-size:12px;
+ line-height:1.1;
+ padding:6px 3px;
+ min-height:30px;
+ margin:0;
+ white-space:normal;
+ overflow-wrap:anywhere;
+}
+@media (max-width:600px){
+ #alts.tutorialManyItems{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;
+ }
+ #alts.tutorialManyItems .alt{
+  font-size:10.5px;
+  padding:5px 2px;
+  min-height:27px;
+ }
+}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 56</div>
+  <div class="badge">Memory Game • Version 59</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Number of Players</b><br>
@@ -175,7 +222,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 56</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 59</span></h2>
   <div class="stats"><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
 <span id="currentPlayer" style="display:none">1</span>
@@ -1020,6 +1067,7 @@ function showTut(){
  $("tDemo").classList.remove("tutorialClickedPreview");
  $("tDemo").textContent=d.demo;
  $("tText").textContent=d.text;
+ $("alts").classList.toggle("tutorialManyItems",d.alts.length>12);
  $("alts").innerHTML=d.alts.map((x,i)=>`<button class="alt" data-i="${i}">${x}</button>`).join("");
  document.querySelectorAll(".alt").forEach(b=>b.onclick=()=>{
   const phrase=d.alts[+b.dataset.i];
