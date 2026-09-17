@@ -101,7 +101,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 42</div>
+  <div class="badge">Memory Game • Version 44</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Players (1–10)</b><br>
@@ -133,9 +133,10 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 42</span></h2>
-  <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 44</span></h2>
+  <div class="stats"><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
+<span id="currentPlayer" style="display:none">1</span>
  <div id="players" class="players"></div>
  <div id="message">Say a card number, for example: “Card five.”</div>
 <div id="liveStats" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0">
@@ -482,7 +483,7 @@ function chooseCard(n){
  if(!gameStarted||locked||awaitingName)return;let c=deck[n-1];if(!c||c.matched||c===first)return;
  reveal(c);speak(c.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
  second=c;locked=true;
- if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,1000)}
+ if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,1500)}
  else{
   playerMismatches++;updateLiveStats();
   setMessage("Checking the pair...");
