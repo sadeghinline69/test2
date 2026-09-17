@@ -96,16 +96,34 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 .wrongJudge{background:#d54b4b}
 .manualJudge:active{transform:translateY(2px);box-shadow:0 3px 0 rgba(0,0,0,.18)}
 .manualHint{font-size:13px;margin-top:8px;color:#667085}
+
+.playerSelect{
+ width:min(280px,90%);min-height:52px;padding:10px 44px 10px 16px;margin:10px;
+ border-radius:12px;border:2px solid #bbc7dd;background:#fff;
+ font-size:18px;font-weight:700;text-align:center;cursor:pointer;
+}
+.playerSelect:focus{outline:3px solid rgba(82,104,232,.22);border-color:#5268e8}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 44</div>
+  <div class="badge">Memory Game • Version 46</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
-  <label><b>Players (1–10)</b><br>
-   <input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd">
+  <label><b>Number of Players</b><br>
+   <select id="playerCount" class="playerSelect" aria-label="Number of players">
+    <option value="1">1 Player</option>
+    <option value="2" selected>2 Players</option>
+    <option value="3">3 Players</option>
+    <option value="4">4 Players</option>
+    <option value="5">5 Players</option>
+    <option value="6">6 Players</option>
+    <option value="7">7 Players</option>
+    <option value="8">8 Players</option>
+    <option value="9">9 Players</option>
+    <option value="10">10 Players</option>
+   </select>
   </label>
   <h2 style="margin:12px 0 8px">Choose a Category</h2>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:12px 0 18px">
@@ -133,7 +151,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 44</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 46</span></h2>
   <div class="stats"><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
 <span id="currentPlayer" style="display:none">1</span>
@@ -635,7 +653,7 @@ function checkAnimal(text){
 }
 
 function nextPlayer(){player=player%numPlayers+1;$("currentPlayer").textContent=player;renderPlayers();voiceOff();setMessage(`Player ${player}: turn Voice ON when you are ready.`);speak(`Player ${player}, it's your turn.`)}
-function renderPlayers(){$("currentPlayer").textContent=player;$("players").innerHTML=Array.from({length:numPlayers},(_,i)=>i+1).map(p=>`<div class="playerBox ${p===player?"active":""}">Player ${p}: ${scores[p]||0}</div>`).join("")}
+function renderPlayers(){$("currentPlayer").textContent=player;$("players").innerHTML=Array.from({length:numPlayers},(_,i)=>i+1).map(p=>`<div class="playerBox ${p===player?"active":""}">Player ${p}</div>`).join("")}
 function finishPlayerGame(){
  voiceOff();
  if(liveTimerId){clearInterval(liveTimerId);liveTimerId=null;} updateLiveStats();
