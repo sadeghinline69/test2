@@ -29,7 +29,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 .nameCard{background:white;border-radius:22px;padding:25px;text-align:center;width:min(480px,94vw)}#promptAnimal{font-size:100px}
 @media(max-width:600px){#board{gap:7px}.card{border-radius:13px}.panel{padding:16px}}
 
-/* Version 2: compact one-screen game board */
+/* : compact one-screen game board */
 #app{max-width:900px;padding:5px 10px}
 .top h2{font-size:20px !important}
 .pill{padding:5px 9px;font-size:13px}
@@ -189,12 +189,20 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  transform:scale(.90);
  transform-origin:center;
 }
+
+/* Selected object/number in tutorial */
+#alts .alt.tutorialSelected{
+ background:#dbeafe !important;
+ border-color:#60a5fa !important;
+ color:#1e40af !important;
+ box-shadow:0 0 0 2px rgba(96,165,250,.16);
+}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 61</div>
+  <div class="badge">Memory Game • </div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Number of Players</b><br>
@@ -247,7 +255,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 61</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match</h2>
   <div class="stats"><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
 <span id="currentPlayer" style="display:none">1</span>
@@ -711,7 +719,23 @@ function chooseUSVoice(){
  return us.find(v=>pref.some(x=>(v.name||"").toLowerCase().includes(x.toLowerCase())))||us[0]||null;
 }
 function refreshVoice(){preferredVoice=chooseUSVoice()} speechSynthesis.onvoiceschanged=refreshVoice;refreshVoice();
-function speak(text,rate=.9){try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(text);u.lang="en-US";if(!preferredVoice)refreshVoice();if(preferredVoice)u.voice=preferredVoice;u.rate=rate;speechSynthesis.speak(u)}catch(e){}}
+function speak(text,rate=.9,onEnd=null){
+ try{
+  speechSynthesis.cancel();
+  let u=new SpeechSynthesisUtterance(text);
+  u.lang="en-US";
+  if(!preferredVoice)refreshVoice();
+  if(preferredVoice)u.voice=preferredVoice;
+  u.rate=rate;
+  if(onEnd){
+   let done=false;
+   const finish=()=>{if(done)return;done=true;onEnd()};
+   u.onend=finish;
+   u.onerror=finish;
+  }
+  speechSynthesis.speak(u);
+ }catch(e){if(onEnd)setTimeout(onEnd,250)}
+}
 function normalize(s){return s.toLowerCase().replace(/[^\w\s-]/g," ").replace(/\s+/g," ").trim()}
 const numberWords={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,"twenty one":21,"twenty two":22,"twenty three":23,"twenty four":24};
 function parseCard(text){
@@ -800,6 +824,18 @@ function randomNamingPrompt(){
  lastNamingPrompt=i;
  return namingPrompts[i];
 }
+let vocabRetryTimer=null;
+function startVocabularyListening(){
+ if(!awaitingName||!answerArmed||!recognition)return;
+ try{if(running)recognition.stop()}catch(e){}
+ setTimeout(()=>{
+  if(!awaitingName||!answerArmed)return;
+  try{recognition.lang="en-US";recognition.start()}catch(e){
+   clearTimeout(vocabRetryTimer);
+   vocabRetryTimer=setTimeout(startVocabularyListening,500);
+  }
+ },220);
+}
 function beginNameChallenge(){
  voiceOff();
  awaitingName=true;answerArmed=false;locked=true;
@@ -815,19 +851,20 @@ function beginNameChallenge(){
  $("nameStatus").textContent=prompt;
  $("namePrompt").style.display="flex";
  setMessage(prompt);
- speak(prompt);
 
- // After the instruction, GREEN: automatically start listening for the object's name.
- setTimeout(()=>{
+ // Start the vocabulary microphone only after the spoken prompt has actually finished.
+ speak(prompt,.9,()=>{
   if(!awaitingName)return;
-  answerArmed=true;
-  ab.classList.remove("vocabOff");
-  ab.classList.add("vocabOn");
-  ab.textContent="🟢 Voice ON — Say the Name";
-  $("nameStatus").textContent="Listening… say the object name.";
-  try{if(running)recognition.stop()}catch(e){}
-  setTimeout(()=>{if(recognition){try{recognition.lang="en-US";recognition.start()}catch(e){}}},180);
- },1650);
+  setTimeout(()=>{
+   if(!awaitingName)return;
+   answerArmed=true;
+   ab.classList.remove("vocabOff");
+   ab.classList.add("vocabOn");
+   ab.textContent="🟢 Voice ON — Say the Name";
+   $("nameStatus").textContent="Listening… say the object name.";
+   startVocabularyListening();
+  },250);
+ });
 }
 function editDistance(a,b){
  const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
@@ -867,6 +904,7 @@ function animalAnswerAccepted(text,name){
 }
 function applyNameResult(ok){
  answerArmed=false;
+ clearTimeout(vocabRetryTimer);
  try{if(running)recognition.stop()}catch(e){}
  paused=true;updateVoiceButton();
  const ab=$("answerBtn");
@@ -981,7 +1019,15 @@ if(SR){
  // Wait for the final phrase so "twenty four" is not prematurely read as "twenty".
  if(text&&hasFinal)handleSpeech(text);
 };
- recognition.onend=()=>{running=false;if(gameStarted&&!paused&&!awaitingName)setTimeout(startRecognition,180)};
+ recognition.onend=()=>{
+ running=false;
+ if(awaitingName&&answerArmed){
+  clearTimeout(vocabRetryTimer);
+  vocabRetryTimer=setTimeout(startVocabularyListening,450);
+  return;
+ }
+ if(!paused&&gameStarted&&!awaitingName)setTimeout(startRecognition,300);
+};
  recognition.onerror=e=>{running=false;$("transcript").textContent="Voice: "+e.error};
 }else{$("transcript").textContent="Speech recognition is not supported in this browser."}
 function updateVoiceButton(){
@@ -1095,7 +1141,9 @@ function showTut(){
  $("alts").classList.toggle("tutorialManyItems",d.alts.length>12);
  $("alts").innerHTML=d.alts.map((x,i)=>`<button class="alt" data-i="${i}">${x}</button>`).join("");
  document.querySelectorAll(".alt").forEach(b=>b.onclick=()=>{
-  const phrase=d.alts[+b.dataset.i];
+   document.querySelectorAll("#alts .alt").forEach(x=>x.classList.remove("tutorialSelected"));
+   b.classList.add("tutorialSelected");
+   const phrase=d.alts[+b.dataset.i];
   speak(phrase);
 
   if(ti===0){
