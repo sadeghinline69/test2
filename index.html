@@ -66,12 +66,19 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 #tDemo.tutorialClickedPreview{min-height:105px;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:900;line-height:1}
 .tutorialNumberPreview{width:88px;height:88px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:#3157d5;color:white;box-shadow:0 5px 0 #18348f;font-size:48px;font-weight:900}
+
+#voiceToggle{font-size:20px!important;font-weight:900!important;padding:13px 24px!important;min-width:190px!important;border-radius:16px!important}
+#scoreScreen{display:none;position:fixed;inset:0;background:#15213ef2;z-index:60;align-items:center;justify-content:center;padding:18px}
+.scoreCard{background:white;width:min(760px,96vw);max-height:92vh;overflow:auto;border-radius:24px;padding:22px;text-align:center}
+.scoreTable{width:100%;border-collapse:collapse;margin:18px 0}
+.scoreTable th,.scoreTable td{padding:11px 8px;border-bottom:1px solid #dce3f4;text-align:center}
+.scoreTable th{background:#eef3ff}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="panel">
-  <div class="badge">Memory Game • Version 17</div>
+  <div class="badge">Memory Game • Version 19</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose cards by saying their numbers. Match two animals, then say the animal's name to earn the point.</p>
   <label><b>Players (1–10)</b><br><input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd"></label><br>
@@ -81,7 +88,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 <div id="genreScreen" class="screen" style="display:none">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 17</div>
+  <div class="badge">Memory Game • Version 19</div>
   <h1>Choose a Category</h1>
   <p id="genrePlayersText"></p>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0">
@@ -94,11 +101,16 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 </div>
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 17</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 19</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
  </div>
  <div id="players" class="players"></div>
  <div id="message">Say a card number, for example: “Card five.”</div>
+<div id="liveStats" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0">
+ <span class="pill">⏱️ Time: <b id="liveTime">0.0 s</b></span>
+ <span class="pill">❌ Unmatched: <b id="liveMiss">0</b></span>
+ <span class="pill">✅ Matches: <b id="liveMatch">0</b></span>
+</div>
  <div id="board"></div>
  <div class="controls">
   <button class="primary stop" id="voiceToggle">🎤 Voice: OFF</button>
@@ -117,6 +129,14 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 </div>
 
+<div id="scoreScreen">
+ <div class="scoreCard">
+  <div class="badge">Final Scoreboard</div>
+  <h2>Game Results</h2>
+  <div id="scoreContent"></div>
+  <button class="primary" id="scoreRestart">Play Again</button>
+ </div>
+</div>
 <div id="tutorial">
  <div class="tutorialCard">
   <button id="closeTut" class="secondary">✕ Close</button>
@@ -141,6 +161,7 @@ let animals=categories.animals;
 let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
 let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false;
 let masterLayout=null, playerResults=[];
+let playerStartTime=0, playerMismatches=0, playerSuccessfulMatches=0, liveTimerId=null;
 
 const $=id=>document.getElementById(id);
 function shuffle(a){
@@ -189,14 +210,25 @@ function buildGame(){
  masterLayout=createMasterLayout();
  startPlayerBoard();
 }
+function updateLiveStats(){
+ $("liveTime").textContent=((performance.now()-playerStartTime)/1000).toFixed(1)+" s";
+ $("liveMiss").textContent=playerMismatches;
+ $("liveMatch").textContent=playerSuccessfulMatches;
+}
 function startPlayerBoard(){
  deck=freshDeckFromMaster();
  first=second=matchedAnimal=null;awaitingName=false;answerArmed=false;locked=false;
- scores[player]=0;
+ scores[player]=0;playerMismatches=0;playerSuccessfulMatches=0;
  $("pairs").textContent=0;
  renderBoard();renderPlayers();
  voiceOff();
- setMessage(`Player ${player}: your own board is ready. Turn Voice ON when you are ready.`);
+ playerStartTime=performance.now();
+ if(liveTimerId)clearInterval(liveTimerId);
+ updateLiveStats();
+ liveTimerId=setInterval(updateLiveStats,100);
+ const startText=`Player ${player}, start your game.`;
+ setMessage(`${startText} Turn Voice ON when you are ready.`);
+ speak(startText);
 }
 function renderBoard(){
  $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
@@ -210,7 +242,7 @@ function chooseCard(n){
  reveal(c);speak(c.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
  second=c;locked=true;
  if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,550)}
- else{setMessage("Not a match.");speak("Not a match.");setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOff();setMessage(`Player ${player}: turn Voice ON and continue your board.`)},1200)}
+ else{playerMismatches++;updateLiveStats();setMessage("Not a match.");setTimeout(()=>speak("Not a match."),650);setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOff();setMessage(`Player ${player}: turn Voice ON and continue your board.`)},1500)}
 }
 function beginNameChallenge(){
  voiceOff();
@@ -252,6 +284,7 @@ function checkAnimal(text){
  if(ok){
   first.matched=second.matched=true;
   scores[player]++;
+  playerSuccessfulMatches++;updateLiveStats();
   $("nameStatus").textContent="Correct";
   setMessage("Correct! +1 point");
   speak("Correct");
@@ -291,7 +324,15 @@ function nextPlayer(){player=player%numPlayers+1;$("currentPlayer").textContent=
 function renderPlayers(){$("currentPlayer").textContent=player;$("players").innerHTML=Array.from({length:numPlayers},(_,i)=>i+1).map(p=>`<div class="playerBox ${p===player?"active":""}">Player ${p}: ${scores[p]||0}</div>`).join("")}
 function finishPlayerGame(){
  voiceOff();
- playerResults.push({player,score:scores[player]});
+ if(liveTimerId){clearInterval(liveTimerId);liveTimerId=null;} updateLiveStats();
+ const elapsed=(performance.now()-playerStartTime)/1000;
+ playerResults.push({
+  player,
+  time:elapsed,
+  mismatches:playerMismatches,
+  matches:playerSuccessfulMatches,
+  score:scores[player]
+ });
  if(player<numPlayers){
   const finished=player;
   player++;
@@ -303,10 +344,20 @@ function finishPlayerGame(){
  }
 }
 function finishGame(){
- paused=true;try{recognition&&recognition.stop()}catch(e){}
- let best=Math.max(...Object.values(scores)),wins=Object.keys(scores).filter(p=>scores[p]===best);
- setMessage(wins.length===1?`🏆 Player ${wins[0]} wins with ${best} pairs!`:`🤝 Tie! Players ${wins.join(", ")} have ${best} pairs.`);
- speak(wins.length===1?`Player ${wins[0]} wins!`:"It's a tie!");
+ voiceOff();gameStarted=false;
+ const ranked=[...playerResults].sort((a,b)=>a.mismatches-b.mismatches || a.time-b.time);
+ const rows=ranked.map((r,i)=>`<tr>
+  <td>${i+1}</td><td>Player ${r.player}${i===0?" 🏆":""}</td>
+  <td>${r.time.toFixed(1)} s</td><td>${r.mismatches}</td><td>${r.matches}</td>
+ </tr>`).join("");
+ const winner=ranked[0];
+ $("scoreContent").innerHTML=`<h2>🏆 Player ${winner.player} is the Winner!</h2>
+ <p>Ranking is based on the fewest unmatched pairs. If tied, the faster time ranks first.</p>
+ <table class="scoreTable">
+  <thead><tr><th>Rank</th><th>Player</th><th>Time Spent</th><th>Unmatched Pairs</th><th>Successful Matches</th></tr></thead>
+  <tbody>${rows}</tbody></table>`;
+ $("scoreScreen").style.display="flex";
+ speak(`Player ${winner.player} is the winner.`);
 }
 function handleSpeech(text){
  $("transcript").textContent='Heard: “'+text+'”';
@@ -358,6 +409,7 @@ document.querySelectorAll(".genreBtn").forEach(btn=>btn.onclick=()=>{
 });
 $("backToPlayers").onclick=()=>{$("genreScreen").style.display="none";$("startScreen").style.display="flex"};
 $("startGame").onclick=()=>{numPlayers=Math.max(1,Math.min(10,+$("playerCount").value||2));$("startScreen").style.display="none";$("genrePlayersText").textContent=`${numPlayers} player${numPlayers===1?"":"s"} selected`;$("genreScreen").style.display="flex"}
+$("scoreRestart").onclick=()=>{$("scoreScreen").style.display="none";$("app").style.display="none";$("startScreen").style.display="flex"};
 $("restart").onclick=()=>{gameStarted=false;paused=true;try{recognition.stop()}catch(e){};$("genreScreen").style.display="none";$("app").style.display="none";$("startScreen").style.display="flex"}
 const tut=[
  {title:"Choose a card",demo:"5️⃣",text:"Say the number of the card you want to reveal.",main:"Card five",alts:["Five","Number five","Open card five","Choose card five","Show number five"]},
