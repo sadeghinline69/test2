@@ -202,9 +202,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • </div>
   <div class="big">🐾 English Memory Match</div>
-  <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Number of Players</b><br>
    <select id="playerCount" class="playerSelect" aria-label="Number of players">
     <option value="1" selected>1 Player</option>
@@ -232,6 +230,9 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <option value="nature">🌦️ Weather & Nature</option>
    <option value="music">🎵 Music</option>
   </select>
+  <h2 style="margin:12px 0 8px">Starting Number</h2>
+  <input id="startingNumber" class="setupSelect" type="number" value="20" min="1" step="1"
+   inputmode="numeric" aria-label="Starting card number" style="box-sizing:border-box">
   <h2 style="margin:16px 0 8px">Difficulty Level</h2>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 20px">
    <button class="primary difficultyBtn selectedDifficulty" data-difficulty="easy">Easy</button>
@@ -260,7 +261,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 <span id="currentPlayer" style="display:none">1</span>
  <div id="players" class="players"></div>
- <div id="message">Say a card number, for example: “Card five.”</div>
+ <div id="message">Say a card number to reveal a card.</div>
 <div id="liveStats" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0">
  <span class="pill">⏱️ Time: <b id="liveTime">0.0 s</b></span>
  <span class="pill">❌ Unmatched: <b id="liveMiss">0</b></span>
@@ -303,7 +304,6 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
   <div class="badge">Tutorial</div><h2 id="tTitle">Choose a card</h2>
   <div id="tDemo" class="demo">5️⃣</div>
   <p id="tText">Say the number of the card you want to reveal.</p>
-  <button id="hearShow" class="primary">🔊▶ Hear & Show Action</button>
   <div style="margin-top:12px"><b>You can also say:</b><div id="alts"></div></div>
   <div style="margin-top:14px"><button id="prevT" class="secondary">← Previous</button> <button id="nextT" class="secondary">Next →</button></div>
  </div>
@@ -694,6 +694,7 @@ let selectedGenre="animals";
 let animals=pickSix(categories.animals,selectedDifficulty);
 let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
 let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false,manualVoiceOff=false;
+let startingNumber=20;
 let masterLayout=null, playerResults=[];
 let playerStartTime=0, playerMismatches=0, playerSuccessfulMatches=0, liveTimerId=null;
 
@@ -737,10 +738,45 @@ function speak(text,rate=.9,onEnd=null){
  }catch(e){if(onEnd)setTimeout(onEnd,250)}
 }
 function normalize(s){return s.toLowerCase().replace(/[^\w\s-]/g," ").replace(/\s+/g," ").trim()}
-const numberWords={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,"twenty one":21,"twenty two":22,"twenty three":23,"twenty four":24};
+const smallNumberWords=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+const tensNumberWords={20:"twenty",30:"thirty",40:"forty",50:"fifty",60:"sixty",70:"seventy",80:"eighty",90:"ninety"};
+function numberToWords(n){
+ n=Math.floor(Number(n));
+ if(n<20)return smallNumberWords[n]||"";
+ if(n<100){
+  const ten=Math.floor(n/10)*10,unit=n%10;
+  return tensNumberWords[ten]+(unit?" "+smallNumberWords[unit]:"");
+ }
+ if(n<1000){
+  const h=Math.floor(n/100),rest=n%100;
+  return smallNumberWords[h]+" hundred"+(rest?" "+numberToWords(rest):"");
+ }
+ if(n<10000){
+  const th=Math.floor(n/1000),rest=n%1000;
+  return smallNumberWords[th]+" thousand"+(rest?" "+numberToWords(rest):"");
+ }
+ return String(n);
+}
+function titleNumber(n){return numberToWords(n).replace(/\b\w/g,c=>c.toUpperCase())}
+function readStartingNumber(){
+ let n=parseInt($("startingNumber").value,10);
+ if(!Number.isFinite(n))n=20;
+ n=Math.max(1,Math.min(9976,n)); // +23 keeps the largest board at or below 9999
+ $("startingNumber").value=n;
+ return n;
+}
 function parseCard(text){
- let s=normalize(text),m=s.match(/\b(2[0-4]|1[0-9]|[1-9])\b/); if(m)return +m[1];
- for(const [w,n] of Object.entries(numberWords).sort((a,b)=>b[0].length-a[0].length))if(new RegExp("\\b"+w+"\\b").test(s))return n;
+ let s=normalize(text),m=s.match(/\b([1-9][0-9]{0,3})\b/);
+ if(m)return +m[1];
+ const max=startingNumber+deck.length-1;
+ // Only the current board's numbers are candidates, so spoken-number matching stays precise.
+ for(let n=max;n>=startingNumber;n--){
+  const w=numberToWords(n);
+  if(w && new RegExp("\\b"+w+"\\b").test(s))return n;
+ }
+ const aliases={1:["won"],2:["to","too"],3:["tree"],4:["for","fore"],5:["fife"],6:["sicks"],7:["sevin"],8:["ate"],9:["niner"]};
+ for(const [n,arr] of Object.entries(aliases))
+  if(+n>=startingNumber && +n<=max && arr.some(x=>s.split(" ").includes(x)))return +n;
  return null;
 }
 function createMasterLayout(){
@@ -749,7 +785,7 @@ function createMasterLayout(){
   base.push({pair:i,name:a.name,icon:a.icon});
   base.push({pair:i,name:a.name,icon:a.icon});
  });
- return shuffle(base).map((c,i)=>({...c,id:i+1}));
+ return shuffle(base).map((c,i)=>({...c,id:i+startingNumber}));
 }
 function freshDeckFromMaster(){
  return masterLayout.map(c=>({...c,open:false,matched:false}));
@@ -792,7 +828,7 @@ function reveal(c){let b=document.querySelector(`.card[data-id="${c.id}"]`);b.cl
 function hide(c){if(c.matched)return;let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.remove("revealed");b.innerHTML=c.id}
 function setMessage(x){$("message").textContent=x}
 function chooseCard(n){
- if(!gameStarted||locked||awaitingName)return;let c=deck[n-1];if(!c||c.matched||c===first)return;
+ if(!gameStarted||locked||awaitingName)return;let c=deck[n-startingNumber];if(!c||c.matched||c===first)return;
  reveal(c);speak(c.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
  second=c;locked=true;
  if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,1500)}
@@ -825,6 +861,15 @@ function randomNamingPrompt(){
  return namingPrompts[i];
 }
 let vocabRetryTimer=null;
+let cardRetryTimer=null;
+function scheduleCardListeningRetry(){
+ clearTimeout(cardRetryTimer);
+ if(paused||!gameStarted||awaitingName)return;
+ cardRetryTimer=setTimeout(()=>{
+  if(paused||!gameStarted||awaitingName)return;
+  startRecognition();
+ },450);
+}
 function startVocabularyListening(){
  if(!awaitingName||!answerArmed||!recognition)return;
  try{if(running)recognition.stop()}catch(e){}
@@ -1002,7 +1047,14 @@ function finishGame(){
 function handleSpeech(text){
  $("transcript").textContent='Heard: “'+text+'”';
  if(awaitingName){if(answerArmed)checkAnimal(text);return}
- let n=parseCard(text);if(n&&n<=deck.length)chooseCard(n);
+ let n=parseCard(text);
+ if(n&&n>=startingNumber&&n<startingNumber+deck.length){
+  clearTimeout(cardRetryTimer);
+  chooseCard(n);
+ }else if(!paused&&gameStarted&&!awaitingName){
+  $("transcript").textContent='Heard: “'+text+'” — please say the card number again.';
+  scheduleCardListeningRetry();
+ }
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(SR){
@@ -1026,7 +1078,7 @@ if(SR){
   vocabRetryTimer=setTimeout(startVocabularyListening,450);
   return;
  }
- if(!paused&&gameStarted&&!awaitingName)setTimeout(startRecognition,300);
+ if(!paused&&gameStarted&&!awaitingName)scheduleCardListeningRetry();
 };
  recognition.onerror=e=>{running=false;$("transcript").textContent="Voice: "+e.error};
 }else{$("transcript").textContent="Speech recognition is not supported in this browser."}
@@ -1068,6 +1120,10 @@ $("voiceToggle").onclick=()=>{
 $("categorySelect").onchange=()=>{
  selectedGenre=$("categorySelect").value;
 };
+$("startingNumber").onchange=()=>{
+ startingNumber=readStartingNumber();
+ refreshCategoryTutorial();
+};
 document.querySelectorAll(".difficultyBtn").forEach(btn=>btn.onclick=()=>{
  selectedDifficulty=btn.dataset.difficulty;
  document.querySelectorAll(".difficultyBtn").forEach(b=>b.classList.toggle("selectedDifficulty",b===btn));
@@ -1079,6 +1135,7 @@ document.querySelectorAll(".sizeBtn").forEach(btn=>btn.onclick=()=>{
 $("manualCorrect").onclick=()=>{if(awaitingName&&matchedAnimal)applyNameResult(true)};
 $("manualWrong").onclick=()=>{if(awaitingName&&matchedAnimal)applyNameResult(false)};
 $("startGame").onclick=()=>{
+ startingNumber=readStartingNumber();
  numPlayers=Math.max(1,Math.min(10,+$("playerCount").value||2));
  animals=pickSix(categories[selectedGenre],selectedDifficulty,boardSizes[selectedSize].pairs);
  $("startScreen").style.display="none";$("app").style.display="block";
@@ -1089,8 +1146,8 @@ $("scoreRestart").onclick=()=>{$("scoreScreen").style.display="none";$("app").st
 $("restart").onclick=()=>{gameStarted=false;paused=true;try{recognition.stop()}catch(e){};$("app").style.display="none";$("startScreen").style.display="flex"}
 const tut=[
  {title:"Practise the object names",demo:"🎯",text:"Push any object name below to hear its American English pronunciation.",main:"",alts:[]},
- {title:"Choose a card",demo:"5️⃣",text:"Say the number of the card you want to reveal.",main:"Card five",alts:["Five","Number five","Open card five","Choose card five","Show number five"]},
- {title:"Practise all card numbers",demo:"🔢",text:"Push any number below to hear its American English pronunciation.",main:"One",alts:["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve"]}
+ {title:"Choose a card",demo:"🔢",text:"Say the number of the card you want to reveal.",main:"Card twenty",alts:["Twenty","Number twenty","Open card twenty","Choose card twenty","Show number twenty"]},
+ {title:"Practise all card numbers",demo:"🔢",text:"Push any number below to hear its American English pronunciation.",main:"Twenty",alts:["Twenty"]}
 ];let ti=0;
 function refreshCategoryTutorial(){
  const d=tut[0];
@@ -1102,8 +1159,14 @@ function refreshCategoryTutorial(){
  d.alts=items.map(a=>a.name);
  d.main=d.alts[0]||"";
  d.demo=(items[0]&&items[0].icon)||"🎯";
- const numberNames=["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen","Twenty","Twenty One","Twenty Two","Twenty Three","Twenty Four"];
- tut[2].alts=numberNames.slice(0,boardSizes[selectedSize].pairs*2);
+ const cardCount=boardSizes[selectedSize].pairs*2;
+ const numberNames=Array.from({length:cardCount},(_,i)=>titleNumber(startingNumber+i));
+ tut[2].alts=numberNames;
+ tut[2].main=numberNames[0]||titleNumber(startingNumber);
+ const firstWord=numberToWords(startingNumber);
+ tut[1].main=`Card ${firstWord}`;
+ tut[1].alts=[titleNumber(startingNumber),`Number ${firstWord}`,`Open card ${firstWord}`,`Choose card ${firstWord}`,`Show number ${firstWord}`];
+ tut[1].demo="🔢";
 }
 function announceTutorialPage(){
  refreshCategoryTutorial();
@@ -1118,10 +1181,11 @@ function announceTutorialPage(){
    $("tDemo").classList.add("tutorialClickedPreview");
    $("tDemo").textContent=item.icon;
   }
- }else if(ti===2){
-  const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
-  const n=words.indexOf(d.main.toLowerCase())+1;
-  if(n>0){
+ }else if(ti===1 || ti===2){
+  const phrase=ti===1?d.main.replace(/^Card\s+/i,""):d.main;
+  const n=Array.from({length:boardSizes[selectedSize].pairs*2},(_,i)=>startingNumber+i)
+   .find(x=>numberToWords(x)===phrase.toLowerCase());
+  if(n!==undefined){
    $("tDemo").classList.add("tutorialClickedPreview");
    $("tDemo").innerHTML=`<div class="tutorialNumberPreview">${n}</div>`;
   }
@@ -1140,6 +1204,8 @@ function showTut(){
  $("tText").textContent=d.text;
  $("alts").classList.toggle("tutorialManyItems",d.alts.length>12);
  $("alts").innerHTML=d.alts.map((x,i)=>`<button class="alt" data-i="${i}">${x}</button>`).join("");
+ const firstTutorialItem=document.querySelector("#alts .alt");
+ if(firstTutorialItem)firstTutorialItem.classList.add("tutorialSelected");
  document.querySelectorAll(".alt").forEach(b=>b.onclick=()=>{
    document.querySelectorAll("#alts .alt").forEach(x=>x.classList.remove("tutorialSelected"));
    b.classList.add("tutorialSelected");
@@ -1152,10 +1218,11 @@ function showTut(){
     $("tDemo").classList.add("tutorialClickedPreview");
     $("tDemo").textContent=item.icon;
    }
-  }else if(ti===2){
-   const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
-   const n=words.indexOf(phrase.toLowerCase())+1;
-   if(n>0){
+  }else if(ti===1 || ti===2){
+   const clean=phrase.toLowerCase().replace(/^(number|open card|choose card|show number|card)\s+/,"");
+   const n=Array.from({length:boardSizes[selectedSize].pairs*2},(_,i)=>startingNumber+i)
+    .find(x=>numberToWords(x)===clean);
+   if(n!==undefined){
     $("tDemo").classList.add("tutorialClickedPreview");
     $("tDemo").innerHTML=`<div class="tutorialNumberPreview">${n}</div>`;
    }
@@ -1179,7 +1246,7 @@ $("closeTut").onclick=()=>{
   setTimeout(()=>voiceOn(),300);
  }
 }
-$("hearShow").onclick=()=>{
+if($("hearShow")) $("hearShow").onclick=()=>{
  const d=tut[ti];
  speak(d.main);
  if(ti===0){
