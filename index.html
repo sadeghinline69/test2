@@ -89,12 +89,17 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 @media(max-width:650px){
  .sizeBtn{font-size:12px!important;padding:9px 3px!important}
 }
+
+.objectPhoto{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
+.promptPhoto{width:220px;height:165px;object-fit:cover;border-radius:16px;display:block;margin:8px auto}
+.tutorialPhoto{width:190px;height:140px;object-fit:cover;border-radius:14px;display:block;margin:auto}
+.card.revealed,.card.matched{padding:4px;overflow:hidden}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 31</div>
+  <div class="badge">Memory Game • Version 34</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Players (1–10)</b><br>
@@ -126,7 +131,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 31</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 34</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
  <div id="players" class="players"></div>
@@ -403,26 +408,26 @@ const categories={
   {name:"cantaloupe",icon:"🍈"},
   {name:"clementine",icon:"🍊"},
   {name:"mandarin",icon:"🍊"},
-  {name:"quince",icon:"🟡"},
-  {name:"kumquat",icon:"🟠"},
-  {name:"pomelo",icon:"🟡"},
-  {name:"rambutan",icon:"🔴"},
-  {name:"durian",icon:"🟢"},
-  {name:"jackfruit",icon:"🟢"},
-  {name:"mangosteen",icon:"🟣"},
+  {name:"quince",icon:"🍐"},
+  {name:"kumquat",icon:"🍊"},
+  {name:"pomelo",icon:"🍊"},
+  {name:"rambutan",icon:"🍒"},
+  {name:"durian",icon:"🍈"},
+  {name:"jackfruit",icon:"🍈"},
+  {name:"mangosteen",icon:"🍇"},
   {name:"starfruit",icon:"⭐"},
-  {name:"tamarind",icon:"🟤"},
+  {name:"tamarind",icon:"🫘"},
   {name:"plantain",icon:"🍌"},
-  {name:"breadfruit",icon:"🟢"},
+  {name:"breadfruit",icon:"🍈"},
   {name:"elderberry",icon:"🫐"},
   {name:"boysenberry",icon:"🫐"},
   {name:"currant",icon:"🔴"},
   {name:"loganberry",icon:"🫐"},
-  {name:"longan",icon:"🟤"},
-  {name:"soursop",icon:"🟢"},
-  {name:"salak",icon:"🟤"},
-  {name:"feijoa",icon:"🟢"},
-  {name:"physalis",icon:"🟠"}
+  {name:"longan",icon:"🍒"},
+  {name:"soursop",icon:"🍐"},
+  {name:"salak",icon:"🍐"},
+  {name:"feijoa",icon:"🥝"},
+  {name:"physalis",icon:"🍊"}
  ]
 };
 const boardSizes={
@@ -434,11 +439,16 @@ const boardSizes={
 };
 let selectedSize="medium";
 let selectedDifficulty="easy";
+function photoURL(name){
+ // Real object photograph, deterministically selected for each vocabulary word.
+ return "https://loremflickr.com/420/320/"+encodeURIComponent(name)+"/all?lock="+
+   Array.from(name).reduce((a,c)=>a+c.charCodeAt(0),0);
+}
 function pickSix(pool,difficulty=selectedDifficulty,count=null){
  const ranges={easy:[0,20],medium:[20,40],hard:[40,60]};
  const [a,b]=ranges[difficulty]||ranges.easy;
  const needed=count??boardSizes[selectedSize].pairs;
- return shuffle(pool.slice(a,b).map(x=>({...x}))).slice(0,needed);
+ return shuffle(pool.slice(a,b).map(x=>({...x,photo:photoURL(x.name)}))).slice(0,needed);
 }
 let selectedGenre="animals";
 let animals=pickSix(categories.animals,selectedDifficulty);
@@ -516,13 +526,16 @@ function startPlayerBoard(){
  speak(startText);
  setTimeout(()=>{if(gameStarted&&!awaitingName)voiceOn();},1200);
 }
+function objectVisual(c,cls="objectPhoto"){
+ return `<img class="${cls}" src="${c.photo}" alt="${c.name}" draggable="false">`;
+}
 function renderBoard(){
  const cfg=boardSizes[selectedSize];
  $("board").style.gridTemplateColumns=`repeat(${cfg.cols}, minmax(0,1fr))`;
- $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
+ $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?objectVisual(c):c.id}</button>`).join("");
  document.querySelectorAll(".card").forEach(b=>b.onclick=()=>chooseCard(+b.dataset.id));
 }
-function reveal(c){let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.add("revealed");b.innerHTML=`<span class="animal">${c.icon}</span>`}
+function reveal(c){let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.add("revealed");b.innerHTML=objectVisual(c)}
 function hide(c){if(c.matched)return;let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.remove("revealed");b.innerHTML=c.id}
 function setMessage(x){$("message").textContent=x}
 function chooseCard(n){
@@ -550,7 +563,7 @@ function randomNamingPrompt(){
 function beginNameChallenge(){
  voiceOff();
  awaitingName=true;answerArmed=false;locked=true;
- $("promptAnimal").textContent=matchedAnimal.icon;
+ $("promptAnimal").innerHTML=objectVisual(matchedAnimal,"promptPhoto");
  const prompt=randomNamingPrompt();
 
  // RED first: vocabulary microphone is OFF while the game gives the instruction.
@@ -707,13 +720,23 @@ function finishGame(){
 function handleSpeech(text){
  $("transcript").textContent='Heard: “'+text+'”';
  if(awaitingName){if(answerArmed)checkAnimal(text);return}
- let n=parseCard(text);if(n&&n<=12)chooseCard(n);
+ let n=parseCard(text);if(n&&n<=deck.length)chooseCard(n);
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(SR){
  recognition=new SR();recognition.lang="en-US";recognition.continuous=false;recognition.interimResults=true;
  recognition.onstart=()=>{running=true};
- recognition.onresult=e=>{let text="";for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript+" ";text=text.trim();if(text)handleSpeech(text)};
+ recognition.onresult=e=>{
+ let text="";
+ let hasFinal=false;
+ for(let i=e.resultIndex;i<e.results.length;i++){
+  text+=e.results[i][0].transcript+" ";
+  if(e.results[i].isFinal)hasFinal=true;
+ }
+ text=text.trim();
+ // Wait for the final phrase so "twenty four" is not prematurely read as "twenty".
+ if(text&&hasFinal)handleSpeech(text);
+};
  recognition.onend=()=>{running=false;if(gameStarted&&!paused&&!awaitingName)setTimeout(startRecognition,180)};
  recognition.onerror=e=>{running=false;$("transcript").textContent="Voice: "+e.error};
 }else{$("transcript").textContent="Speech recognition is not supported in this browser."}
@@ -795,7 +818,7 @@ function announceTutorialPage(){
   const item=animals.find(a=>a.name.toLowerCase()===d.main.toLowerCase());
   if(item){
    $("tDemo").classList.add("tutorialClickedPreview");
-   $("tDemo").textContent=item.icon;
+   $("tDemo").innerHTML=objectVisual(item,"tutorialPhoto");
   }
  }else if(ti===2){
   const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
@@ -815,7 +838,8 @@ function showTut(){
  let d=tut[ti];
  $("tTitle").textContent=d.title;
  $("tDemo").classList.remove("tutorialClickedPreview");
- $("tDemo").textContent=d.demo;
+ if(ti===1 && animals[0]) $("tDemo").innerHTML=objectVisual(animals[0],"tutorialPhoto");
+ else $("tDemo").textContent=d.demo;
  $("tText").textContent=d.text;
  $("alts").innerHTML=d.alts.map((x,i)=>`<button class="alt" data-i="${i}">${x}</button>`).join("");
  document.querySelectorAll(".alt").forEach(b=>b.onclick=()=>{
@@ -826,7 +850,7 @@ function showTut(){
    const item=animals.find(a=>a.name.toLowerCase()===phrase.toLowerCase());
    if(item){
     $("tDemo").classList.add("tutorialClickedPreview");
-    $("tDemo").textContent=item.icon;
+    $("tDemo").innerHTML=objectVisual(item,"tutorialPhoto");
    }
   }else if(ti===2){
    const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
