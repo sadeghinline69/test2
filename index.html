@@ -79,12 +79,15 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 .setupGenre{opacity:.72;filter:saturate(.7)}
 .setupGenre.selectedGenre{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
+
+.difficultyBtn{opacity:.72;filter:saturate(.7)}
+.difficultyBtn.selectedDifficulty{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 28</div>
+  <div class="badge">Memory Game • Version 29</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Players (1–10)</b><br>
@@ -97,12 +100,18 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <button class="primary setupGenre" data-genre="sports">🏅 Sports</button>
    <button class="primary setupGenre" data-genre="fruit">🍎 Fruit</button>
   </div>
+  <h2 style="margin:16px 0 8px">Difficulty Level</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 20px">
+   <button class="primary difficultyBtn selectedDifficulty" data-difficulty="easy">Easy</button>
+   <button class="primary difficultyBtn" data-difficulty="medium">Medium</button>
+   <button class="primary difficultyBtn" data-difficulty="hard">Hard</button>
+  </div>
   <button class="primary" id="startGame">Start Game</button>
  </div>
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 28</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 29</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
  </div>
  <div id="players" class="players"></div>
@@ -153,39 +162,262 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <script>
 const categories={
  animals:[
-  {name:"monkey",icon:"🐒"},{name:"lion",icon:"🦁"},{name:"elephant",icon:"🐘"},{name:"panda",icon:"🐼"},{name:"tiger",icon:"🐯"},{name:"rabbit",icon:"🐰"},
-  {name:"dog",icon:"🐶"},{name:"cat",icon:"🐱"},{name:"bear",icon:"🐻"},{name:"fox",icon:"🦊"},{name:"wolf",icon:"🐺"},{name:"cow",icon:"🐮"},
-  {name:"pig",icon:"🐷"},{name:"frog",icon:"🐸"},{name:"chicken",icon:"🐔"},{name:"penguin",icon:"🐧"},{name:"bird",icon:"🐦"},{name:"duck",icon:"🦆"},
-  {name:"eagle",icon:"🦅"},{name:"owl",icon:"🦉"},{name:"horse",icon:"🐴"},{name:"zebra",icon:"🦓"},{name:"giraffe",icon:"🦒"},{name:"deer",icon:"🦌"},
-  {name:"camel",icon:"🐫"},{name:"kangaroo",icon:"🦘"},{name:"koala",icon:"🐨"},{name:"mouse",icon:"🐭"},{name:"sheep",icon:"🐑"},{name:"goat",icon:"🐐"}
+  {name:"dog",icon:"🐶"},
+  {name:"cat",icon:"🐱"},
+  {name:"lion",icon:"🦁"},
+  {name:"tiger",icon:"🐯"},
+  {name:"elephant",icon:"🐘"},
+  {name:"monkey",icon:"🐒"},
+  {name:"rabbit",icon:"🐰"},
+  {name:"bear",icon:"🐻"},
+  {name:"horse",icon:"🐴"},
+  {name:"cow",icon:"🐮"},
+  {name:"pig",icon:"🐷"},
+  {name:"sheep",icon:"🐑"},
+  {name:"goat",icon:"🐐"},
+  {name:"duck",icon:"🦆"},
+  {name:"chicken",icon:"🐔"},
+  {name:"bird",icon:"🐦"},
+  {name:"frog",icon:"🐸"},
+  {name:"mouse",icon:"🐭"},
+  {name:"panda",icon:"🐼"},
+  {name:"fox",icon:"🦊"},
+  {name:"wolf",icon:"🐺"},
+  {name:"deer",icon:"🦌"},
+  {name:"zebra",icon:"🦓"},
+  {name:"giraffe",icon:"🦒"},
+  {name:"camel",icon:"🐫"},
+  {name:"kangaroo",icon:"🦘"},
+  {name:"koala",icon:"🐨"},
+  {name:"eagle",icon:"🦅"},
+  {name:"owl",icon:"🦉"},
+  {name:"penguin",icon:"🐧"},
+  {name:"dolphin",icon:"🐬"},
+  {name:"whale",icon:"🐋"},
+  {name:"shark",icon:"🦈"},
+  {name:"octopus",icon:"🐙"},
+  {name:"turtle",icon:"🐢"},
+  {name:"snake",icon:"🐍"},
+  {name:"crocodile",icon:"🐊"},
+  {name:"gorilla",icon:"🦍"},
+  {name:"leopard",icon:"🐆"},
+  {name:"hippopotamus",icon:"🦛"},
+  {name:"rhinoceros",icon:"🦏"},
+  {name:"orangutan",icon:"🦧"},
+  {name:"sloth",icon:"🦥"},
+  {name:"otter",icon:"🦦"},
+  {name:"beaver",icon:"🦫"},
+  {name:"badger",icon:"🦡"},
+  {name:"skunk",icon:"🦨"},
+  {name:"hedgehog",icon:"🦔"},
+  {name:"raccoon",icon:"🦝"},
+  {name:"moose",icon:"🫎"},
+  {name:"buffalo",icon:"🐃"},
+  {name:"boar",icon:"🐗"},
+  {name:"antelope",icon:"🦌"},
+  {name:"flamingo",icon:"🦩"},
+  {name:"peacock",icon:"🦚"},
+  {name:"parrot",icon:"🦜"},
+  {name:"swan",icon:"🦢"},
+  {name:"seal",icon:"🦭"},
+  {name:"lobster",icon:"🦞"},
+  {name:"squid",icon:"🦑"}
  ],
  food:[
-  {name:"pizza",icon:"🍕"},{name:"hamburger",icon:"🍔"},{name:"sandwich",icon:"🥪"},{name:"cheese",icon:"🧀"},{name:"egg",icon:"🥚"},{name:"bread",icon:"🍞"},
-  {name:"rice",icon:"🍚"},{name:"spaghetti",icon:"🍝"},{name:"soup",icon:"🍲"},{name:"salad",icon:"🥗"},{name:"hot dog",icon:"🌭"},{name:"taco",icon:"🌮"},
-  {name:"burrito",icon:"🌯"},{name:"fries",icon:"🍟"},{name:"pancakes",icon:"🥞"},{name:"waffle",icon:"🧇"},{name:"bacon",icon:"🥓"},{name:"chicken",icon:"🍗"},
-  {name:"steak",icon:"🥩"},{name:"shrimp",icon:"🍤"},{name:"sushi",icon:"🍣"},{name:"popcorn",icon:"🍿"},{name:"cookie",icon:"🍪"},{name:"cake",icon:"🍰"},
-  {name:"chocolate",icon:"🍫"},{name:"candy",icon:"🍬"},{name:"ice cream",icon:"🍦"},{name:"doughnut",icon:"🍩"},{name:"pretzel",icon:"🥨"},{name:"butter",icon:"🧈"}
+  {name:"pizza",icon:"🍕"},
+  {name:"hamburger",icon:"🍔"},
+  {name:"sandwich",icon:"🥪"},
+  {name:"cheese",icon:"🧀"},
+  {name:"egg",icon:"🥚"},
+  {name:"bread",icon:"🍞"},
+  {name:"rice",icon:"🍚"},
+  {name:"soup",icon:"🍲"},
+  {name:"salad",icon:"🥗"},
+  {name:"chicken",icon:"🍗"},
+  {name:"fries",icon:"🍟"},
+  {name:"cake",icon:"🍰"},
+  {name:"cookie",icon:"🍪"},
+  {name:"chocolate",icon:"🍫"},
+  {name:"ice cream",icon:"🍦"},
+  {name:"pancakes",icon:"🥞"},
+  {name:"spaghetti",icon:"🍝"},
+  {name:"hot dog",icon:"🌭"},
+  {name:"popcorn",icon:"🍿"},
+  {name:"candy",icon:"🍬"},
+  {name:"steak",icon:"🥩"},
+  {name:"shrimp",icon:"🍤"},
+  {name:"sushi",icon:"🍣"},
+  {name:"taco",icon:"🌮"},
+  {name:"burrito",icon:"🌯"},
+  {name:"waffle",icon:"🧇"},
+  {name:"bacon",icon:"🥓"},
+  {name:"butter",icon:"🧈"},
+  {name:"pretzel",icon:"🥨"},
+  {name:"noodles",icon:"🍜"},
+  {name:"dumpling",icon:"🥟"},
+  {name:"curry",icon:"🍛"},
+  {name:"omelette",icon:"🍳"},
+  {name:"meatball",icon:"🧆"},
+  {name:"kebab",icon:"🍢"},
+  {name:"pie",icon:"🥧"},
+  {name:"cupcake",icon:"🧁"},
+  {name:"honey",icon:"🍯"},
+  {name:"cereal",icon:"🥣"},
+  {name:"yogurt",icon:"🥛"},
+  {name:"croissant",icon:"🥐"},
+  {name:"bagel",icon:"🥯"},
+  {name:"falafel",icon:"🧆"},
+  {name:"paella",icon:"🥘"},
+  {name:"risotto",icon:"🍚"},
+  {name:"lasagna",icon:"🍝"},
+  {name:"quiche",icon:"🥧"},
+  {name:"gnocchi",icon:"🥔"},
+  {name:"hummus",icon:"🫘"},
+  {name:"tofu",icon:"⬜"},
+  {name:"tempura",icon:"🍤"},
+  {name:"ramen",icon:"🍜"},
+  {name:"sashimi",icon:"🍣"},
+  {name:"bruschetta",icon:"🍞"},
+  {name:"focaccia",icon:"🍞"},
+  {name:"couscous",icon:"🍚"},
+  {name:"sauerkraut",icon:"🥬"},
+  {name:"gazpacho",icon:"🥣"},
+  {name:"tiramisu",icon:"🍰"},
+  {name:"macaroon",icon:"🍪"}
  ],
  sports:[
-  {name:"football",icon:"⚽"},{name:"basketball",icon:"🏀"},{name:"tennis",icon:"🎾"},{name:"baseball",icon:"⚾"},{name:"volleyball",icon:"🏐"},{name:"boxing",icon:"🥊"},
-  {name:"rugby",icon:"🏉"},{name:"badminton",icon:"🏸"},{name:"table tennis",icon:"🏓"},{name:"golf",icon:"⛳"},{name:"hockey",icon:"🏒"},{name:"cricket",icon:"🏏"},
-  {name:"skiing",icon:"⛷️"},{name:"snowboarding",icon:"🏂"},{name:"swimming",icon:"🏊"},{name:"surfing",icon:"🏄"},{name:"cycling",icon:"🚴"},{name:"running",icon:"🏃"},
-  {name:"wrestling",icon:"🤼"},{name:"fencing",icon:"🤺"},{name:"archery",icon:"🏹"},{name:"weightlifting",icon:"🏋️"},{name:"gymnastics",icon:"🤸"},{name:"skating",icon:"⛸️"},
-  {name:"bowling",icon:"🎳"},{name:"karate",icon:"🥋"},{name:"rowing",icon:"🚣"},{name:"climbing",icon:"🧗"},{name:"horse racing",icon:"🏇"},{name:"handball",icon:"🤾"}
+  {name:"football",icon:"⚽"},
+  {name:"basketball",icon:"🏀"},
+  {name:"tennis",icon:"🎾"},
+  {name:"baseball",icon:"⚾"},
+  {name:"volleyball",icon:"🏐"},
+  {name:"boxing",icon:"🥊"},
+  {name:"swimming",icon:"🏊"},
+  {name:"running",icon:"🏃"},
+  {name:"cycling",icon:"🚴"},
+  {name:"golf",icon:"⛳"},
+  {name:"rugby",icon:"🏉"},
+  {name:"hockey",icon:"🏒"},
+  {name:"skiing",icon:"⛷️"},
+  {name:"skating",icon:"⛸️"},
+  {name:"surfing",icon:"🏄"},
+  {name:"bowling",icon:"🎳"},
+  {name:"karate",icon:"🥋"},
+  {name:"gymnastics",icon:"🤸"},
+  {name:"wrestling",icon:"🤼"},
+  {name:"badminton",icon:"🏸"},
+  {name:"table tennis",icon:"🏓"},
+  {name:"cricket",icon:"🏏"},
+  {name:"snowboarding",icon:"🏂"},
+  {name:"fencing",icon:"🤺"},
+  {name:"archery",icon:"🏹"},
+  {name:"weightlifting",icon:"🏋️"},
+  {name:"rowing",icon:"🚣"},
+  {name:"climbing",icon:"🧗"},
+  {name:"horse racing",icon:"🏇"},
+  {name:"handball",icon:"🤾"},
+  {name:"diving",icon:"🤿"},
+  {name:"sailing",icon:"⛵"},
+  {name:"canoeing",icon:"🛶"},
+  {name:"skateboarding",icon:"🛹"},
+  {name:"triathlon",icon:"🏊"},
+  {name:"judo",icon:"🥋"},
+  {name:"taekwondo",icon:"🥋"},
+  {name:"kickboxing",icon:"🥊"},
+  {name:"billiards",icon:"🎱"},
+  {name:"darts",icon:"🎯"},
+  {name:"lacrosse",icon:"🥍"},
+  {name:"curling",icon:"🥌"},
+  {name:"water polo",icon:"🤽"},
+  {name:"squash",icon:"🎾"},
+  {name:"polo",icon:"🏇"},
+  {name:"pentathlon",icon:"🏃"},
+  {name:"decathlon",icon:"🏃"},
+  {name:"biathlon",icon:"⛷️"},
+  {name:"bobsleigh",icon:"🛷"},
+  {name:"luge",icon:"🛷"},
+  {name:"skeleton",icon:"🛷"},
+  {name:"dressage",icon:"🏇"},
+  {name:"equestrian",icon:"🏇"},
+  {name:"orienteering",icon:"🧭"},
+  {name:"windsurfing",icon:"🏄"},
+  {name:"kitesurfing",icon:"🏄"},
+  {name:"powerlifting",icon:"🏋️"},
+  {name:"sumo",icon:"🤼"},
+  {name:"snooker",icon:"🎱"},
+  {name:"racquetball",icon:"🎾"}
  ],
  fruit:[
-  {name:"apple",icon:"🍎"},{name:"banana",icon:"🍌"},{name:"orange",icon:"🍊"},{name:"grapes",icon:"🍇"},{name:"strawberry",icon:"🍓"},{name:"watermelon",icon:"🍉"},
-  {name:"pear",icon:"🍐"},{name:"peach",icon:"🍑"},{name:"cherry",icon:"🍒"},{name:"pineapple",icon:"🍍"},{name:"kiwi",icon:"🥝"},{name:"mango",icon:"🥭"},
-  {name:"lemon",icon:"🍋"},{name:"melon",icon:"🍈"},{name:"blueberry",icon:"🫐"},{name:"coconut",icon:"🥥"},{name:"avocado",icon:"🥑"},{name:"tomato",icon:"🍅"},
-  {name:"lime",icon:"🍋"},{name:"raspberry",icon:"🍓"},{name:"blackberry",icon:"🫐"},{name:"plum",icon:"🟣"},{name:"apricot",icon:"🍑"},{name:"pomegranate",icon:"🔴"},
-  {name:"papaya",icon:"🥭"},{name:"fig",icon:"🟣"},{name:"grapefruit",icon:"🍊"},{name:"tangerine",icon:"🍊"},{name:"dragon fruit",icon:"🐉"},{name:"passion fruit",icon:"🟡"}
+  {name:"apple",icon:"🍎"},
+  {name:"banana",icon:"🍌"},
+  {name:"orange",icon:"🍊"},
+  {name:"grapes",icon:"🍇"},
+  {name:"strawberry",icon:"🍓"},
+  {name:"watermelon",icon:"🍉"},
+  {name:"pear",icon:"🍐"},
+  {name:"peach",icon:"🍑"},
+  {name:"cherry",icon:"🍒"},
+  {name:"pineapple",icon:"🍍"},
+  {name:"kiwi",icon:"🥝"},
+  {name:"mango",icon:"🥭"},
+  {name:"lemon",icon:"🍋"},
+  {name:"melon",icon:"🍈"},
+  {name:"blueberry",icon:"🫐"},
+  {name:"coconut",icon:"🥥"},
+  {name:"avocado",icon:"🥑"},
+  {name:"lime",icon:"🍋"},
+  {name:"plum",icon:"🟣"},
+  {name:"apricot",icon:"🍑"},
+  {name:"raspberry",icon:"🍓"},
+  {name:"blackberry",icon:"🫐"},
+  {name:"pomegranate",icon:"🔴"},
+  {name:"papaya",icon:"🥭"},
+  {name:"fig",icon:"🟣"},
+  {name:"grapefruit",icon:"🍊"},
+  {name:"tangerine",icon:"🍊"},
+  {name:"passion fruit",icon:"🟡"},
+  {name:"dragon fruit",icon:"🐉"},
+  {name:"cranberry",icon:"🔴"},
+  {name:"nectarine",icon:"🍑"},
+  {name:"persimmon",icon:"🟠"},
+  {name:"guava",icon:"🟢"},
+  {name:"date",icon:"🟤"},
+  {name:"lychee",icon:"🔴"},
+  {name:"mulberry",icon:"🫐"},
+  {name:"gooseberry",icon:"🟢"},
+  {name:"cantaloupe",icon:"🍈"},
+  {name:"clementine",icon:"🍊"},
+  {name:"mandarin",icon:"🍊"},
+  {name:"quince",icon:"🟡"},
+  {name:"kumquat",icon:"🟠"},
+  {name:"pomelo",icon:"🟡"},
+  {name:"rambutan",icon:"🔴"},
+  {name:"durian",icon:"🟢"},
+  {name:"jackfruit",icon:"🟢"},
+  {name:"mangosteen",icon:"🟣"},
+  {name:"starfruit",icon:"⭐"},
+  {name:"tamarind",icon:"🟤"},
+  {name:"plantain",icon:"🍌"},
+  {name:"breadfruit",icon:"🟢"},
+  {name:"elderberry",icon:"🫐"},
+  {name:"boysenberry",icon:"🫐"},
+  {name:"currant",icon:"🔴"},
+  {name:"loganberry",icon:"🫐"},
+  {name:"longan",icon:"🟤"},
+  {name:"soursop",icon:"🟢"},
+  {name:"salak",icon:"🟤"},
+  {name:"feijoa",icon:"🟢"},
+  {name:"physalis",icon:"🟠"}
  ]
 };
-function pickSix(pool){
- return shuffle(pool.map(x=>({...x}))).slice(0,6);
+let selectedDifficulty="easy";
+function pickSix(pool,difficulty=selectedDifficulty){
+ const ranges={easy:[0,20],medium:[20,40],hard:[40,60]};
+ const [a,b]=ranges[difficulty]||ranges.easy;
+ return shuffle(pool.slice(a,b).map(x=>({...x}))).slice(0,6);
 }
 let selectedGenre="animals";
-let animals=pickSix(categories.animals);
+let animals=pickSix(categories.animals,selectedDifficulty);
 let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
 let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false;
 let masterLayout=null, playerResults=[];
@@ -491,9 +723,13 @@ document.querySelectorAll(".setupGenre").forEach(btn=>btn.onclick=()=>{
  selectedGenre=btn.dataset.genre;
  document.querySelectorAll(".setupGenre").forEach(b=>b.classList.toggle("selectedGenre",b===btn));
 });
+document.querySelectorAll(".difficultyBtn").forEach(btn=>btn.onclick=()=>{
+ selectedDifficulty=btn.dataset.difficulty;
+ document.querySelectorAll(".difficultyBtn").forEach(b=>b.classList.toggle("selectedDifficulty",b===btn));
+});
 $("startGame").onclick=()=>{
  numPlayers=Math.max(1,Math.min(10,+$("playerCount").value||2));
- animals=pickSix(categories[selectedGenre]);
+ animals=pickSix(categories[selectedGenre],selectedDifficulty);
  $("startScreen").style.display="none";$("app").style.display="block";
  gameStarted=true;paused=true;buildGame();updateVoiceButton();
  setMessage("Voice is OFF. Get ready to start.");
