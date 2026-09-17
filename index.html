@@ -82,12 +82,19 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 .difficultyBtn{opacity:.72;filter:saturate(.7)}
 .difficultyBtn.selectedDifficulty{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
+
+.sizeBtn{opacity:.72;filter:saturate(.7);padding:10px 5px!important}
+.sizeBtn.selectedSize{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
+.sizeBtn small{font-size:12px}
+@media(max-width:650px){
+ .sizeBtn{font-size:12px!important;padding:9px 3px!important}
+}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 29</div>
+  <div class="badge">Memory Game • Version 31</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Players (1–10)</b><br>
@@ -106,13 +113,21 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <button class="primary difficultyBtn" data-difficulty="medium">Medium</button>
    <button class="primary difficultyBtn" data-difficulty="hard">Hard</button>
   </div>
+  <h2 style="margin:16px 0 8px">Table Size</h2>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 20px">
+   <button class="primary sizeBtn" data-size="verySmall">Very Small<br><small>2 × 2</small></button>
+   <button class="primary sizeBtn" data-size="small">Small<br><small>2 × 3</small></button>
+   <button class="primary sizeBtn selectedSize" data-size="medium">Medium<br><small>3 × 4</small></button>
+   <button class="primary sizeBtn" data-size="large">Large<br><small>4 × 4</small></button>
+   <button class="primary sizeBtn" data-size="veryLarge">Very Large<br><small>4 × 6</small></button>
+  </div>
   <button class="primary" id="startGame">Start Game</button>
  </div>
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 29</span></h2>
-  <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 31</span></h2>
+  <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
  <div id="players" class="players"></div>
  <div id="message">Say a card number, for example: “Card five.”</div>
@@ -410,11 +425,20 @@ const categories={
   {name:"physalis",icon:"🟠"}
  ]
 };
+const boardSizes={
+ verySmall:{rows:2,cols:2,pairs:2},
+ small:{rows:2,cols:3,pairs:3},
+ medium:{rows:3,cols:4,pairs:6},
+ large:{rows:4,cols:4,pairs:8},
+ veryLarge:{rows:4,cols:6,pairs:12}
+};
+let selectedSize="medium";
 let selectedDifficulty="easy";
-function pickSix(pool,difficulty=selectedDifficulty){
+function pickSix(pool,difficulty=selectedDifficulty,count=null){
  const ranges={easy:[0,20],medium:[20,40],hard:[40,60]};
  const [a,b]=ranges[difficulty]||ranges.easy;
- return shuffle(pool.slice(a,b).map(x=>({...x}))).slice(0,6);
+ const needed=count??boardSizes[selectedSize].pairs;
+ return shuffle(pool.slice(a,b).map(x=>({...x}))).slice(0,needed);
 }
 let selectedGenre="animals";
 let animals=pickSix(categories.animals,selectedDifficulty);
@@ -447,10 +471,10 @@ function chooseUSVoice(){
 function refreshVoice(){preferredVoice=chooseUSVoice()} speechSynthesis.onvoiceschanged=refreshVoice;refreshVoice();
 function speak(text,rate=.9){try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(text);u.lang="en-US";if(!preferredVoice)refreshVoice();if(preferredVoice)u.voice=preferredVoice;u.rate=rate;speechSynthesis.speak(u)}catch(e){}}
 function normalize(s){return s.toLowerCase().replace(/[^\w\s-]/g," ").replace(/\s+/g," ").trim()}
-const numberWords={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12};
+const numberWords={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,"twenty one":21,"twenty two":22,"twenty three":23,"twenty four":24};
 function parseCard(text){
- let s=normalize(text),m=s.match(/\b(1[0-2]|[1-9])\b/); if(m)return +m[1];
- for(const [w,n] of Object.entries(numberWords))if(new RegExp("\\b"+w+"\\b").test(s))return n;
+ let s=normalize(text),m=s.match(/\b(2[0-4]|1[0-9]|[1-9])\b/); if(m)return +m[1];
+ for(const [w,n] of Object.entries(numberWords).sort((a,b)=>b[0].length-a[0].length))if(new RegExp("\\b"+w+"\\b").test(s))return n;
  return null;
 }
 function createMasterLayout(){
@@ -480,6 +504,7 @@ function startPlayerBoard(){
  first=second=matchedAnimal=null;awaitingName=false;answerArmed=false;locked=false;
  scores[player]=0;playerMismatches=0;playerSuccessfulMatches=0;
  $("pairs").textContent=0;
+ $("pairTotal").textContent=boardSizes[selectedSize].pairs;
  renderBoard();renderPlayers();
  voiceOff();
  playerStartTime=performance.now();
@@ -492,6 +517,8 @@ function startPlayerBoard(){
  setTimeout(()=>{if(gameStarted&&!awaitingName)voiceOn();},1200);
 }
 function renderBoard(){
+ const cfg=boardSizes[selectedSize];
+ $("board").style.gridTemplateColumns=`repeat(${cfg.cols}, minmax(0,1fr))`;
  $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
  document.querySelectorAll(".card").forEach(b=>b.onclick=()=>chooseCard(+b.dataset.id));
 }
@@ -727,9 +754,13 @@ document.querySelectorAll(".difficultyBtn").forEach(btn=>btn.onclick=()=>{
  selectedDifficulty=btn.dataset.difficulty;
  document.querySelectorAll(".difficultyBtn").forEach(b=>b.classList.toggle("selectedDifficulty",b===btn));
 });
+document.querySelectorAll(".sizeBtn").forEach(btn=>btn.onclick=()=>{
+ selectedSize=btn.dataset.size;
+ document.querySelectorAll(".sizeBtn").forEach(b=>b.classList.toggle("selectedSize",b===btn));
+});
 $("startGame").onclick=()=>{
  numPlayers=Math.max(1,Math.min(10,+$("playerCount").value||2));
- animals=pickSix(categories[selectedGenre],selectedDifficulty);
+ animals=pickSix(categories[selectedGenre],selectedDifficulty,boardSizes[selectedSize].pairs);
  $("startScreen").style.display="none";$("app").style.display="block";
  gameStarted=true;paused=true;buildGame();updateVoiceButton();
  setMessage("Voice is OFF. Get ready to start.");
@@ -750,6 +781,8 @@ function refreshCategoryTutorial(){
  d.alts=items.map(a=>a.name);
  d.main=d.alts[0]||"";
  d.demo=(items[0]&&items[0].icon)||"🎯";
+ const numberNames=["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen","Twenty","Twenty One","Twenty Two","Twenty Three","Twenty Four"];
+ tut[2].alts=numberNames.slice(0,boardSizes[selectedSize].pairs*2);
 }
 function announceTutorialPage(){
  refreshCategoryTutorial();
@@ -765,7 +798,7 @@ function announceTutorialPage(){
    $("tDemo").textContent=item.icon;
   }
  }else if(ti===2){
-  const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
+  const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
   const n=words.indexOf(d.main.toLowerCase())+1;
   if(n>0){
    $("tDemo").classList.add("tutorialClickedPreview");
@@ -796,7 +829,7 @@ function showTut(){
     $("tDemo").textContent=item.icon;
    }
   }else if(ti===2){
-   const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
+   const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty","twenty one","twenty two","twenty three","twenty four"];
    const n=words.indexOf(phrase.toLowerCase())+1;
    if(n>0){
     $("tDemo").classList.add("tutorialClickedPreview");
@@ -807,8 +840,21 @@ function showTut(){
  });
 }
 function animateDemo(){$("tDemo").animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:650})}
-$("tutorialBtn").onclick=()=>{try{recognition&&recognition.stop()}catch(e){};$("tutorial").style.display="flex";ti=0;showTut();announceTutorialPage()}
-$("closeTut").onclick=()=>{$("tutorial").style.display="none";if(gameStarted&&!paused)setTimeout(startRecognition,250)}
+$("tutorialBtn").onclick=()=>{
+ // Tutorial always turns the game microphone OFF.
+ try{recognition&&recognition.stop()}catch(e){}
+ paused=true;
+ updateVoiceButton();
+ $("tutorial").style.display="flex";
+ ti=0;showTut();announceTutorialPage();
+}
+$("closeTut").onclick=()=>{
+ $("tutorial").style.display="none";
+ // Returning to an active game automatically turns the microphone ON.
+ if(gameStarted&&!awaitingName){
+  setTimeout(()=>voiceOn(),300);
+ }
+}
 $("hearShow").onclick=()=>{speak(tut[ti].main);animateDemo()}
 $("prevT").onclick=()=>{ti=(ti+tut.length-1)%tut.length;showTut();announceTutorialPage()}
 $("nextT").onclick=()=>{ti=(ti+1)%tut.length;showTut();announceTutorialPage()}
