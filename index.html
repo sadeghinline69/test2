@@ -71,7 +71,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <body>
 <div id="startScreen" class="screen">
  <div class="panel">
-  <div class="badge">Memory Game • Version 16</div>
+  <div class="badge">Memory Game • Version 17</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose cards by saying their numbers. Match two animals, then say the animal's name to earn the point.</p>
   <label><b>Players (1–10)</b><br><input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd"></label><br>
@@ -81,7 +81,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 <div id="genreScreen" class="screen" style="display:none">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 16</div>
+  <div class="badge">Memory Game • Version 17</div>
   <h1>Choose a Category</h1>
   <p id="genrePlayersText"></p>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0">
@@ -94,7 +94,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 </div>
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 16</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 17</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
  </div>
  <div id="players" class="players"></div>
@@ -140,6 +140,7 @@ let selectedGenre="animals";
 let animals=categories.animals;
 let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
 let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false;
+let masterLayout=null, playerResults=[];
 
 const $=id=>document.getElementById(id);
 function shuffle(a){
@@ -171,10 +172,31 @@ function parseCard(text){
  for(const [w,n] of Object.entries(numberWords))if(new RegExp("\\b"+w+"\\b").test(s))return n;
  return null;
 }
+function createMasterLayout(){
+ const base=[];
+ animals.forEach((a,i)=>{
+  base.push({pair:i,name:a.name,icon:a.icon});
+  base.push({pair:i,name:a.name,icon:a.icon});
+ });
+ return shuffle(base).map((c,i)=>({...c,id:i+1}));
+}
+function freshDeckFromMaster(){
+ return masterLayout.map(c=>({...c,open:false,matched:false}));
+}
 function buildGame(){
- deck=makeSpreadDeck().map((x,i)=>({...x,id:i+1,matched:false}));
- first=second=null;locked=false;awaitingName=false;matchedAnimal=null;player=1;scores={};for(let i=1;i<=numPlayers;i++)scores[i]=0;
- $("pairs").textContent=0;renderBoard();renderPlayers();setMessage("Player 1: say a card number, for example “Card five.”");speak("Player 1. Say a card number.");
+ scores={};for(let i=1;i<=numPlayers;i++)scores[i]=0;
+ playerResults=[];player=1;
+ masterLayout=createMasterLayout();
+ startPlayerBoard();
+}
+function startPlayerBoard(){
+ deck=freshDeckFromMaster();
+ first=second=matchedAnimal=null;awaitingName=false;answerArmed=false;locked=false;
+ scores[player]=0;
+ $("pairs").textContent=0;
+ renderBoard();renderPlayers();
+ voiceOff();
+ setMessage(`Player ${player}: your own board is ready. Turn Voice ON when you are ready.`);
 }
 function renderBoard(){
  $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
@@ -185,10 +207,10 @@ function hide(c){if(c.matched)return;let b=document.querySelector(`.card[data-id
 function setMessage(x){$("message").textContent=x}
 function chooseCard(n){
  if(!gameStarted||locked||awaitingName)return;let c=deck[n-1];if(!c||c.matched||c===first)return;
- reveal(c);speak(c.animal.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
+ reveal(c);speak(c.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
  second=c;locked=true;
  if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,550)}
- else{setMessage("Not a match.");speak("Not a match.");setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;nextPlayer()},1200)}
+ else{setMessage("Not a match.");speak("Not a match.");setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOff();setMessage(`Player ${player}: turn Voice ON and continue your board.`)},1200)}
 }
 function beginNameChallenge(){
  voiceOff();
@@ -241,7 +263,7 @@ function checkAnimal(text){
    $("namePrompt").style.display="none";
    answerArmed=false;
    first=second=null;
-   if(deck.every(c=>c.matched))finishGame();
+   if(deck.every(c=>c.matched))finishPlayerGame();
    else{
     locked=false;
     voiceOff(); setMessage(`Player ${player}: turn Voice ON when you are ready.`);
@@ -260,12 +282,26 @@ function checkAnimal(text){
    hide(first);hide(second);
    first=second=null;
    locked=false;
-   nextPlayer();
+   voiceOff();
+   setMessage(`Player ${player}: no point. Turn Voice ON and continue your board.`);
   },900);
  }
 }
 function nextPlayer(){player=player%numPlayers+1;$("currentPlayer").textContent=player;renderPlayers();voiceOff();setMessage(`Player ${player}: turn Voice ON when you are ready.`);speak(`Player ${player}, it's your turn.`)}
 function renderPlayers(){$("currentPlayer").textContent=player;$("players").innerHTML=Array.from({length:numPlayers},(_,i)=>i+1).map(p=>`<div class="playerBox ${p===player?"active":""}">Player ${p}: ${scores[p]||0}</div>`).join("")}
+function finishPlayerGame(){
+ voiceOff();
+ playerResults.push({player,score:scores[player]});
+ if(player<numPlayers){
+  const finished=player;
+  player++;
+  setMessage(`Player ${finished} finished! Player ${player} is next.`);
+  speak(`Player ${finished} finished. Player ${player}, get ready.`);
+  setTimeout(()=>startPlayerBoard(),1400);
+ }else{
+  finishGame();
+ }
+}
 function finishGame(){
  paused=true;try{recognition&&recognition.stop()}catch(e){}
  let best=Math.max(...Object.values(scores)),wins=Object.keys(scores).filter(p=>scores[p]===best);
