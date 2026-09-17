@@ -708,6 +708,24 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  }
 }
 
+
+/* Public online release label */
+.onlineReleaseLabel{
+ position:fixed;
+ top:5px;
+ left:7px;
+ z-index:1000;
+ font-size:11px;
+ line-height:1;
+ font-weight:900;
+ color:rgba(255,255,255,.88);
+ background:rgba(20,30,55,.48);
+ border:1px solid rgba(255,255,255,.28);
+ border-radius:7px;
+ padding:4px 6px;
+ pointer-events:none;
+ user-select:none;
+}
 </style>
 
 <link rel="manifest" href="./manifest.webmanifest">
@@ -721,6 +739,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 </head>
 <body>
+<div class="onlineReleaseLabel" aria-label="Online release 2">Online 2</div>
 <div id="startScreen" class="screen">
  <div class="startCard">
   <div class="big">🐾 English Memory Match</div>
@@ -1540,7 +1559,10 @@ function applyNameResult(ok){
    if(deck.every(c=>c.matched)){
     if(onlineMode){finishOnlineSharedGame();}else finishPlayerGame();
    } else if(onlineMode){
-    player=player%numPlayers+1;locked=false;updateRosterUI();setMessage(`${onlineRoster[player-1]?.name||("Player "+player)}'s turn.`);broadcastOnlineState();
+    // Online rules: a correct match earns another turn for the SAME player.
+    locked=false;updateRosterUI();renderOnlineLiveScoreboard();
+    setMessage(`Correct! ${onlineRoster[player-1]?.name||("Player "+player)} plays again.`);
+    broadcastOnlineState();
    } else{locked=false;voiceOn();setMessage(`Player ${player}: voice is ON. Choose the next card.`);}
   },900);
  }else{
@@ -1590,12 +1612,22 @@ function finishPlayerGame(){
   finishGame();
  }
 }
-function finishOnlineSharedGame(){
+function renderOnlineLiveScoreboard(){
+ if(!onlineMode)return;
+ const box=$("liveStats");
+ if(!box)return;
+ box.innerHTML=onlineRoster.map((p,i)=>`<span class="pill">${i+1===player?"▶️ ":""}${p.name}: <b>${scores[i+1]||0}</b> matches</span>`).join("");
+}
+function displayOnlineFinalScoreboard(){
  voiceOff();gameStarted=false;
  const ranked=onlineRoster.map((p,i)=>({name:p.name,score:scores[i+1]||0})).sort((a,b)=>b.score-a.score);
  const rows=ranked.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}${i===0?" 🏆":""}</td><td>${r.score}</td></tr>`).join("");
- $("scoreContent").innerHTML=`<h2>🏆 ${ranked[0]?.name||"Winner"}</h2><p>Online ranking is based on successful matches.</p><table class="scoreTable"><thead><tr><th>Rank</th><th>Player</th><th>Matches</th></tr></thead><tbody>${rows}</tbody></table>`;
- $("scoreScreen").style.display="flex";if(onlineHost)onlineSendAll({type:"state",...serializeOnlineState(),finished:true});
+ $("scoreContent").innerHTML=`<h2>🏆 Online Scoreboard</h2><table class="scoreTable"><thead><tr><th>Rank</th><th>Player</th><th>Correct Matches</th></tr></thead><tbody>${rows}</tbody></table>`;
+ $("scoreScreen").style.display="flex";
+}
+function finishOnlineSharedGame(){
+ displayOnlineFinalScoreboard();
+ if(onlineHost)onlineSendAll({type:"state",...serializeOnlineState(),finished:true});
 }
 function finishGame(){
  voiceOff();gameStarted=false;
@@ -1942,6 +1974,7 @@ function updateRosterUI(){
  $("onlinePlayers").textContent=text||"Waiting for players…";
  if(onlineMode && gameStarted){
   $("players").innerHTML=onlineRoster.map((p,i)=>`<div class="playerBox ${i+1===player?"active":""}">${p.name}</div>`).join("");
+  renderOnlineLiveScoreboard();
  }
 }
 function onlineSendAll(msg){peerConns=peerConns.filter(c=>c&&c.open);peerConns.forEach(c=>{try{c.send(msg)}catch(e){}})}
@@ -1969,7 +2002,8 @@ function applyOnlineState(s){
  first=s.first!=null?deck.find(c=>c.id===s.first)||null:null;second=s.second!=null?deck.find(c=>c.id===s.second)||null:null;
  locked=!!s.locked;awaitingName=!!s.awaitingName;matchedAnimal=s.matchedAnimal;onlineRoster=s.roster||onlineRoster;
  $("pairs").textContent=s.pairs||0;$("pairTotal").textContent=boardSizes[selectedSize].pairs;setMessage(s.message||"");
- renderBoard();updateRosterUI();updateLiveStats();
+ renderBoard();updateRosterUI();renderOnlineLiveScoreboard();
+ if(s.finished){displayOnlineFinalScoreboard();return;}
  const myIndex=onlineRoster.findIndex(x=>x.name===onlineMe)+1;
  concealTransientOnlineCardsForViewer(myIndex);
  // Only the active remote player receives the naming controls.
@@ -2028,27 +2062,64 @@ function startHostedOnlineGame(){
  // Shared board: all players use one board; turns rotate after each completed pair attempt.
  scores={};for(let i=1;i<=numPlayers;i++)scores[i]=0;playerResults=[];player=1;masterLayout=createMasterLayout();deck=freshDeckFromMaster();
  first=second=matchedAnimal=null;awaitingName=false;answerArmed=false;locked=false;playerMismatches=0;playerSuccessfulMatches=0;
- $("pairs").textContent=0;$("pairTotal").textContent=boardSizes[selectedSize].pairs;renderBoard();updateRosterUI();setMessage(`${onlineRoster[0].name}'s turn.`);
+ $("pairs").textContent=0;$("pairTotal").textContent=boardSizes[selectedSize].pairs;renderBoard();updateRosterUI();renderOnlineLiveScoreboard();setMessage(`${onlineRoster[0].name}'s turn.`);
  const state=serializeOnlineState();onlineSendAll({type:"start",roster:onlineRoster,size:selectedSize,start:startingNumber,genre:selectedGenre,difficulty:selectedDifficulty,mode:gameMode,state});broadcastOnlineState();
 }
 // UI mode controls
-$("localPlayBtn").onclick=()=>{onlineMode=false;$("onlineLobby").style.display="none";$("playerCountWrap").style.display="";$("startGame").style.display="block"};
+$("localPlayBtn").onclick=()=>{onlineMode=false;$("onlineLobby").style.display="none";$("playerCountWrap").style.display="";$("startGame").style.display="block";$("liveStats").innerHTML='<span class="pill">⏱️ Time: <b id="liveTime">0.0 s</b></span><span class="pill">❌ Unmatched: <b id="liveMiss">0</b></span><span class="pill">✅ Matches: <b id="liveMatch">0</b></span>'};
 $("onlinePlayBtn").onclick=()=>{onlineMode=true;$("onlineLobby").style.display="block";$("playerCountWrap").style.display="none";$("startGame").style.display="none"};
 $("showJoinBtn").onclick=()=>{$("joinFields").style.display="block"};
 $("createRoomBtn").onclick=createOnlineRoom;$("joinRoomBtn").onclick=joinOnlineRoom;$("onlineStartBtn").onclick=startHostedOnlineGame;
-// Online turn handling (V98): one player chooses BOTH cards of the pair.
+// Online turn handling (V100): each player chooses BOTH cards; correct match keeps the turn, wrong match passes it.
 // The turn changes only after the complete pair attempt has been resolved.
 const originalChooseCard=chooseCard;
 function hostProcessOnlineCard(n,actorIdx){
  if(!onlineMode||!onlineHost||actorIdx!==player||locked||awaitingName)return;
- originalChooseCard(n);
- // If a guest is choosing, the host is only the authority: do not reveal
- // that guest's temporary card choices on the host's screen.
+ const c=deck[n-startingNumber];
+ if(!c||c.matched||c===first)return;
+
+ // Online mode has its own pair-resolution flow. The active player chooses
+ // both cards. Remote viewers conceal these temporary cards locally.
+ reveal(c);speak(c.name);
+ if(!first){
+  first=c;
+  setMessage(`Card ${n} revealed. Choose another card.`);
+  broadcastOnlineState();
+ }else{
+  second=c;locked=true;
+  setMessage("Checking the pair...");
+  broadcastOnlineState();
+
+  if(first.pair===second.pair){
+   matchedAnimal=first;
+   // Keep the same player's turn. Start the English naming challenge.
+   setTimeout(()=>{
+    if(!onlineMode||!onlineHost||!first||!second)return;
+    beginNameChallenge();
+    broadcastOnlineState();
+   },1500);
+  }else{
+   // Wrong pair: show it to the selecting player, then close it and pass turn.
+   setTimeout(()=>{
+    if(!onlineMode||!onlineHost||!first||!second)return;
+    setMessage("Not a match.");
+    speak("Not a match.");
+    broadcastOnlineState();
+   },1000);
+   setTimeout(()=>{
+    if(!onlineMode||!onlineHost||!first||!second)return;
+    first=second=null;matchedAnimal=null;locked=false;
+    player=player%numPlayers+1;
+    renderBoard();updateRosterUI();renderOnlineLiveScoreboard();
+    setMessage(`${onlineRoster[player-1]?.name||("Player "+player)}'s turn.`);
+    broadcastOnlineState();
+   },2200);
+  }
+ }
+
+ // Privacy is visual only on the host's own screen; authoritative state stays intact.
  const hostIdx=onlineRoster.findIndex(x=>x.peer===onlinePeer.id)+1;
  if(actorIdx!==hostIdx)concealTransientOnlineCardsForViewer(hostIdx);
- // Keep the same player active after the first card. The normal game logic
- // advances to the next player only after the second card/pair is resolved.
- setTimeout(broadcastOnlineState,40);
 }
 chooseCard=function(n){
  if(onlineMode&&!onlineHost){
