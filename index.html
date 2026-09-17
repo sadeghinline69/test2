@@ -80,10 +80,10 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 .setupGenre{opacity:.72;filter:saturate(.7)}
 .setupGenre.selectedGenre{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
 
-.difficultyBtn{opacity:.72;filter:saturate(.7)}
+.difficultyBtn{opacity:1;filter:none;background:#fff!important;color:#344054!important;border-color:#bbc7dd!important}
 .difficultyBtn.selectedDifficulty{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
 
-.sizeBtn{opacity:.72;filter:saturate(.7);padding:10px 5px!important}
+.sizeBtn{opacity:1;filter:none;padding:10px 5px!important;background:#fff!important;color:#344054!important;border-color:#bbc7dd!important}
 .sizeBtn.selectedSize{opacity:1;outline:4px solid #1f9d55;filter:none;transform:scale(1.02)}
 .sizeBtn small{font-size:12px}
 @media(max-width:650px){
@@ -111,6 +111,14 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 }
 .setupSelect:focus{outline:3px solid rgba(82,104,232,.22);border-color:#5268e8}
 
+.otherSettings{margin:8px 0 10px}
+#otherSettingsBtn{
+ width:min(320px,92%);min-height:46px;background:#fff!important;color:#344054!important;
+ border:2px solid #bbc7dd!important;border-radius:12px;font-size:16px;font-weight:800;
+}
+#otherSettingsPanel{display:none;margin:8px auto 4px;padding:10px 12px 2px;width:min(320px,92%);box-sizing:border-box;background:#f8fafc;border:1px solid #d9e0ec;border-radius:12px}
+#otherSettingsPanel.open{display:block}
+#otherSettingsPanel h2{margin:2px 0 5px!important}
 .creatorCredit{
  margin-top:20px;padding-top:14px;border-top:1px solid #d9e0ec;
  font-size:14px;line-height:1.6;color:#667085;text-align:center;
@@ -230,13 +238,10 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <option value="nature">🌦️ Weather & Nature</option>
    <option value="music">🎵 Music</option>
   </select>
-  <h2 style="margin:12px 0 8px">Starting Number</h2>
-  <input id="startingNumber" class="setupSelect" type="number" value="20" min="1" step="1"
-   inputmode="numeric" aria-label="Starting card number" style="box-sizing:border-box">
   <h2 style="margin:16px 0 8px">Difficulty Level</h2>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 20px">
-   <button class="primary difficultyBtn selectedDifficulty" data-difficulty="easy">Easy</button>
-   <button class="primary difficultyBtn" data-difficulty="medium">Medium</button>
+   <button class="primary difficultyBtn" data-difficulty="easy">Easy</button>
+   <button class="primary difficultyBtn selectedDifficulty" data-difficulty="medium">Medium</button>
    <button class="primary difficultyBtn" data-difficulty="hard">Hard</button>
   </div>
   <h2 style="margin:16px 0 8px">Table Size</h2>
@@ -248,6 +253,14 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
    <button class="primary sizeBtn" data-size="veryLarge">Very Large<br><small>6 × 4</small></button>
   </div>
   <button class="primary" id="startGame">Start Game</button>
+  <div class="otherSettings">
+   <button type="button" id="otherSettingsBtn">Other Settings ▾</button>
+   <div id="otherSettingsPanel">
+    <h2>Starting Number</h2>
+    <input id="startingNumber" class="setupSelect" type="number" value="20" min="1" step="1"
+     inputmode="numeric" aria-label="Starting card number" style="box-sizing:border-box;margin-bottom:8px">
+   </div>
+  </div>
   <div class="creatorCredit">
    Designed &amp; Created by <strong>Sadegh Mosleh</strong><br>
    <span>© 2026 Sadegh Mosleh. All rights reserved.</span>
@@ -310,6 +323,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <script>
+const learnerDefinitions={"dog":"A common animal often kept as a pet.","cat":"A small animal often kept as a pet.","lion":"A large wild cat that lives mainly in Africa.","tiger":"A large wild cat with dark stripes.","elephant":"A very large animal with a long trunk.","rabbit":"A small animal with long ears and strong back legs.","horse":"A large animal that people can ride.","bird":"An animal with feathers, wings, and a beak.","penguin":"A black-and-white seabird that cannot fly.","dolphin":"An intelligent sea mammal that swims very well.","whale":"A very large mammal that lives in the sea.","shark":"A large fish with sharp teeth.","octopus":"A sea animal with eight long arms.","turtle":"An animal with a hard shell covering its body.","snake":"A long animal with no legs.","giraffe":"A very tall African animal with a long neck.","zebra":"An African animal like a horse with black-and-white stripes.","apple":"A round fruit with firm flesh and red, green, or yellow skin.","banana":"A long curved fruit with yellow skin.","orange":"A round citrus fruit with orange skin.","strawberry":"A soft red fruit with tiny seeds on its surface.","watermelon":"A large fruit with green skin and sweet red flesh.","lemon":"A yellow citrus fruit with a sour taste.","pizza":"A flat baked dish usually topped with tomato and cheese.","hamburger":"A cooked meat patty served inside a round bread roll.","sandwich":"Food placed between two pieces of bread.","bread":"A baked food made mainly from flour and water.","ice cream":"A sweet frozen food made with milk or cream.","football":"A team sport in which players try to score goals with a ball.","basketball":"A team sport in which players throw a ball through a high hoop.","tennis":"A sport in which players hit a ball over a net with rackets.","swimming":"The activity or sport of moving through water.","car":"A road vehicle with four wheels used for carrying people.","taxi":"A car that carries passengers for payment.","bus":"A large road vehicle that carries many passengers.","train":"A group of connected railway vehicles.","airplane":"A powered vehicle with wings that flies through the air.","helicopter":"An aircraft that flies using rotating blades above it.","bicycle":"A two-wheeled vehicle moved by pushing pedals.","chair":"A piece of furniture designed for one person to sit on.","bed":"A piece of furniture used for sleeping.","door":"A movable panel used to enter or leave a room or building.","window":"An opening with glass that lets light into a building.","mirror":"A surface that reflects an image.","key":"A small metal object used to open or lock something.","clock":"A device that shows the time.","computer":"An electronic machine used to store and process information.","camera":"A device used to take photographs or videos.","carrot":"A long orange root vegetable.","broccoli":"A green vegetable with a thick stalk and small flower heads.","onion":"A round vegetable with many layers and a strong smell.","potato":"A round or oval underground vegetable rich in starch.","tomato":"A soft red fruit commonly eaten as a vegetable.","tree":"A tall plant with a woody trunk and branches.","flower":"The colorful part of a plant that produces seeds.","sun":"The star that gives Earth light and heat.","moon":"The natural object that travels around Earth.","star":"A huge ball of hot glowing gas seen as a point of light in the sky.","cloud":"A visible mass of tiny water drops or ice crystals in the sky.","rain":"Water that falls from clouds in drops.","snow":"Soft white ice crystals that fall from clouds.","rainbow":"A curved band of colors sometimes seen after rain.","mountain":"A very high natural area of land with steep sides.","microphone":"A device that changes sound into an electrical signal.","headphones":"A device worn over or in the ears for listening to sound.","guitar":"A stringed instrument usually played by strumming or picking.","violin":"A small stringed instrument played with a bow.","drum":"A percussion instrument played by hitting a stretched surface.","flute":"A long wind instrument played by blowing across an opening."};
 const categories={
  animals:[
   {name:"dog",icon:"🐶"},
@@ -665,7 +679,7 @@ const boardSizes={
  veryLarge:{rows:6,cols:4,pairs:12}
 };
 let selectedSize="medium";
-let selectedDifficulty="easy";
+let selectedDifficulty="medium";
 function difficultyPool(pool,difficulty){
  // Ignore any empty entries, then divide the real emoji vocabulary into 3 groups.
  const clean=pool.filter(x=>x && x.name && x.icon);
@@ -1120,6 +1134,11 @@ $("voiceToggle").onclick=()=>{
 $("categorySelect").onchange=()=>{
  selectedGenre=$("categorySelect").value;
 };
+$("otherSettingsBtn").onclick=()=>{
+ const panel=$("otherSettingsPanel");
+ const open=panel.classList.toggle("open");
+ $("otherSettingsBtn").textContent=open?"Other Settings ▴":"Other Settings ▾";
+};
 $("startingNumber").onchange=()=>{
  startingNumber=readStartingNumber();
  refreshCategoryTutorial();
@@ -1153,11 +1172,11 @@ function refreshCategoryTutorial(){
  const d=tut[0];
  const label=selectedGenre==="animals"?"animal":selectedGenre==="fruit"?"fruit":selectedGenre==="food"?"food":selectedGenre==="sports"?"sport":"object";
  d.title=`Practise the ${label} names`;
- d.text=`Push any ${label} name below to hear its American English pronunciation and see its picture.`;
  const items=(Array.isArray(animals)&&animals.length)?animals:(categories[selectedGenre]||categories.animals);
  d.items=items;
  d.alts=items.map(a=>a.name);
  d.main=d.alts[0]||"";
+ d.text=learnerDefinitions[d.main]||"A useful English word to learn.";
  d.demo=(items[0]&&items[0].icon)||"🎯";
  const cardCount=boardSizes[selectedSize].pairs*2;
  const numberNames=Array.from({length:cardCount},(_,i)=>titleNumber(startingNumber+i));
@@ -1217,6 +1236,7 @@ function showTut(){
    if(item){
     $("tDemo").classList.add("tutorialClickedPreview");
     $("tDemo").textContent=item.icon;
+    $("tText").textContent=learnerDefinitions[item.name]||"A useful English word to learn.";
    }
   }else if(ti===1 || ti===2){
    const clean=phrase.toLowerCase().replace(/^(number|open card|choose card|show number|card)\s+/,"");
