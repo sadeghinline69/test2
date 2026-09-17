@@ -455,6 +455,28 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  font-size:clamp(19px,5.8vw,23px)!important;
 }
 
+
+/* Force the complete title to fit on one line on narrow screens */
+#startScreen h1{
+ display:block!important;
+ width:100%!important;
+ max-width:100%!important;
+ box-sizing:border-box!important;
+ white-space:nowrap!important;
+ overflow:visible!important;
+ font-size:clamp(15px,5vw,21px)!important;
+ line-height:1.05!important;
+ letter-spacing:-0.4px!important;
+ margin-left:auto!important;
+ margin-right:auto!important;
+}
+@media (max-width:380px){
+ #startScreen h1{
+  font-size:15px!important;
+  letter-spacing:-0.6px!important;
+ }
+}
+
 </style>
 </head>
 <body>
