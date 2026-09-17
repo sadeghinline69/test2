@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>English Memory Match</title>
+<style>
+:root{--bg:#eef5ff;--ink:#172033;--blue:#3f66e8;--card:#3157cf;--green:#23a55a}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(#eaf3ff,#fff);color:var(--ink)}
+button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradient(135deg,#3157cf,#7246d8);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
+.panel{width:min(680px,96vw);background:#fff;border-radius:24px;padding:24px;text-align:center;box-shadow:0 20px 60px #0005}
+.badge{display:inline-block;background:#e9efff;color:#3157cf;border-radius:999px;padding:6px 12px;font-weight:800;margin:4px}
+.big{font-size:clamp(26px,5vw,44px);margin:8px}.primary{border:0;border-radius:14px;background:var(--blue);color:white;padding:12px 18px;font-weight:800;cursor:pointer}
+.secondary{border:1px solid #cbd6ee;border-radius:12px;background:white;padding:10px 14px;font-weight:700;cursor:pointer}
+#app{max-width:1050px;margin:auto;padding:12px}.top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.stats{display:flex;gap:8px;flex-wrap:wrap}.pill{background:white;border-radius:14px;padding:9px 12px;box-shadow:0 3px 14px #18366b18;font-weight:800}
+#message{background:white;border-radius:16px;padding:12px;text-align:center;margin:10px 0;font-weight:800;min-height:46px}
+#board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:760px;margin:10px auto}
+.card{aspect-ratio:1/1;border:0;border-radius:18px;background:linear-gradient(145deg,#426be8,#2448bd);color:white;font-size:clamp(28px,7vw,56px);font-weight:900;box-shadow:0 7px 0 #18348f;cursor:pointer;position:relative;overflow:hidden}
+.card.revealed,.card.matched{background:white;color:#172033;box-shadow:0 4px 15px #19335d22;border:3px solid #d8e4fa}
+.card.matched{border-color:#61ca86;background:#f0fff5}.animal{font-size:clamp(38px,8vw,76px);display:block}.animalName{font-size:clamp(12px,2.5vw,20px);font-weight:900;margin-top:3px}
+.controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px}.listen{background:#159957}.stop{background:#d54b4b}.voiceOn{background:#159957!important}
+#transcript{text-align:center;color:#506078;min-height:24px}.players{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px}.playerBox{background:white;border:2px solid transparent;border-radius:14px;padding:8px 12px;font-weight:800}.playerBox.active{border-color:#3157cf;background:#edf2ff}
+#tutorial{display:none;position:fixed;inset:0;background:#15213ed9;z-index:40;overflow-y:auto;padding:8px;align-items:flex-start;justify-content:center}
+.tutorialCard{width:min(720px,96vw);background:white;border-radius:22px;padding:18px;text-align:center;margin:auto;position:relative}
+#closeTut{position:sticky;top:0;float:right}.demo{height:190px;background:#edf4ff;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:10px;font-size:70px}
+.alt{margin:4px;padding:7px 10px;border:1px solid #cbd6ee;border-radius:10px;background:white;font-weight:700;cursor:pointer}
+#namePrompt{display:none;position:fixed;inset:0;background:#15213ed9;z-index:35;align-items:center;justify-content:center;padding:15px}
+.nameCard{background:white;border-radius:22px;padding:25px;text-align:center;width:min(480px,94vw)}#promptAnimal{font-size:100px}
+@media(max-width:600px){#board{gap:7px}.card{border-radius:13px}.panel{padding:16px}}
+
+/* Version 2: compact one-screen game board */
+#app{max-width:900px;padding:5px 10px}
+.top h2{font-size:20px !important}
+.pill{padding:5px 9px;font-size:13px}
+#players{margin:3px}
+.playerBox{padding:5px 9px;font-size:13px}
+#message{padding:7px;margin:4px 0;min-height:34px;font-size:14px}
+#board{
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:7px;
+  width:min(520px,92vw);
+  margin:5px auto;
+}
+.card{
+  aspect-ratio:1.18/1;
+  border-radius:12px;
+  font-size:clamp(22px,4vw,38px);
+  box-shadow:0 4px 0 #18348f;
+}
+.animal{font-size:clamp(28px,5vw,48px)}
+.controls{margin:5px;gap:5px}
+.controls button{padding:7px 10px;font-size:13px}
+#transcript{font-size:12px;min-height:18px}
+@media(max-height:700px){
+  #app{padding-top:2px}
+  .top h2{font-size:17px !important;margin:2px !important}
+  #board{width:min(440px,86vw);gap:5px;margin:3px auto}
+  .card{aspect-ratio:1.3/1}
+  .animal{font-size:34px}
+  #message{padding:5px;min-height:29px}
+  .playerBox{padding:3px 7px}
+  .controls button{padding:5px 8px}
+}
+
+
+#tDemo.tutorialClickedPreview{min-height:105px;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:900;line-height:1}
+.tutorialNumberPreview{width:88px;height:88px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:#3157d5;color:white;box-shadow:0 5px 0 #18348f;font-size:48px;font-weight:900}
+</style>
+</head>
+<body>
+<div id="startScreen" class="screen">
+ <div class="panel">
+  <div class="badge">Memory Game • Version 16</div>
+  <div class="big">🐾 English Memory Match</div>
+  <p>Choose cards by saying their numbers. Match two animals, then say the animal's name to earn the point.</p>
+  <label><b>Players (1–10)</b><br><input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd"></label><br>
+  <button class="primary" id="startGame">Start Game</button>
+ </div>
+</div>
+
+<div id="genreScreen" class="screen" style="display:none">
+ <div class="startCard">
+  <div class="badge">Memory Game • Version 16</div>
+  <h1>Choose a Category</h1>
+  <p id="genrePlayersText"></p>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0">
+   <button class="primary genreBtn" data-genre="food">🍽️ Food</button>
+   <button class="primary genreBtn" data-genre="animals">🐾 Animals</button>
+   <button class="primary genreBtn" data-genre="sports">🏅 Sports</button>
+   <button class="primary genreBtn" data-genre="fruit">🍎 Fruit</button>
+  </div>
+  <button class="secondary" id="backToPlayers">← Back</button>
+ </div>
+</div>
+<div id="app">
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 16</span></h2>
+  <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
+ </div>
+ <div id="players" class="players"></div>
+ <div id="message">Say a card number, for example: “Card five.”</div>
+ <div id="board"></div>
+ <div class="controls">
+  <button class="primary stop" id="voiceToggle">🎤 Voice: OFF</button>
+  <button class="secondary" id="tutorialBtn">📘 Tutorial</button>
+  <button class="secondary" id="restart">↻ Restart</button>
+ </div>
+ <div id="transcript"></div>
+</div>
+
+<div id="namePrompt">
+ <div class="nameCard">
+  <h2>🎉 It's a match!</h2><div id="promptAnimal"></div>
+  <p><b>Press the button, then say the animal's name.</b></p>
+  <button id="answerBtn" class="primary">🎤 Say the Animal</button>
+  <div id="nameStatus" style="margin-top:10px"></div>
+ </div>
+</div>
+
+<div id="tutorial">
+ <div class="tutorialCard">
+  <button id="closeTut" class="secondary">✕ Close</button>
+  <div class="badge">Tutorial</div><h2 id="tTitle">Choose a card</h2>
+  <div id="tDemo" class="demo">5️⃣</div>
+  <p id="tText">Say the number of the card you want to reveal.</p>
+  <button id="hearShow" class="primary">🔊▶ Hear & Show Action</button>
+  <div style="margin-top:12px"><b>You can also say:</b><div id="alts"></div></div>
+  <div style="margin-top:14px"><button id="prevT" class="secondary">← Previous</button> <button id="nextT" class="secondary">Next →</button></div>
+ </div>
+</div>
+
+<script>
+const categories={
+ animals:[{name:"monkey",icon:"🐒"},{name:"lion",icon:"🦁"},{name:"elephant",icon:"🐘"},{name:"panda",icon:"🐼"},{name:"tiger",icon:"🐯"},{name:"rabbit",icon:"🐰"}],
+ food:[{name:"pizza",icon:"🍕"},{name:"hamburger",icon:"🍔"},{name:"sandwich",icon:"🥪"},{name:"cheese",icon:"🧀"},{name:"egg",icon:"🥚"},{name:"bread",icon:"🍞"}],
+ sports:[{name:"football",icon:"⚽"},{name:"basketball",icon:"🏀"},{name:"tennis",icon:"🎾"},{name:"baseball",icon:"⚾"},{name:"volleyball",icon:"🏐"},{name:"boxing",icon:"🥊"}],
+ fruit:[{name:"apple",icon:"🍎"},{name:"banana",icon:"🍌"},{name:"orange",icon:"🍊"},{name:"grapes",icon:"🍇"},{name:"strawberry",icon:"🍓"},{name:"watermelon",icon:"🍉"}]
+};
+let selectedGenre="animals";
+let animals=categories.animals;
+let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
+let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false;
+
+const $=id=>document.getElementById(id);
+function shuffle(a){
+ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+ return a;
+}
+function pairsAreSpread(){return true;}
+function makeSpreadDeck(){
+ const base=animals.flatMap((a,i)=>[{...a,pair:i},{...a,pair:i}]);
+ let candidate;
+ for(let tries=0;tries<500;tries++){
+  candidate=shuffle(base.map(x=>({...x})));
+  if(pairsAreSpread(candidate))return candidate;
+ }
+ return candidate;
+}
+function chooseUSVoice(){
+ const vs=speechSynthesis.getVoices();
+ const us=vs.filter(v=>((v.lang||"").replace("_","-").toLowerCase()).startsWith("en-us"));
+ const pref=["Natural","Neural","Premium","Enhanced","Aria","Jenny","Guy","Samantha","Google US English","Microsoft"];
+ return us.find(v=>pref.some(x=>(v.name||"").toLowerCase().includes(x.toLowerCase())))||us[0]||null;
+}
+function refreshVoice(){preferredVoice=chooseUSVoice()} speechSynthesis.onvoiceschanged=refreshVoice;refreshVoice();
+function speak(text,rate=.9){try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(text);u.lang="en-US";if(!preferredVoice)refreshVoice();if(preferredVoice)u.voice=preferredVoice;u.rate=rate;speechSynthesis.speak(u)}catch(e){}}
+function normalize(s){return s.toLowerCase().replace(/[^\w\s-]/g," ").replace(/\s+/g," ").trim()}
+const numberWords={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12};
+function parseCard(text){
+ let s=normalize(text),m=s.match(/\b(1[0-2]|[1-9])\b/); if(m)return +m[1];
+ for(const [w,n] of Object.entries(numberWords))if(new RegExp("\\b"+w+"\\b").test(s))return n;
+ return null;
+}
+function buildGame(){
+ deck=makeSpreadDeck().map((x,i)=>({...x,id:i+1,matched:false}));
+ first=second=null;locked=false;awaitingName=false;matchedAnimal=null;player=1;scores={};for(let i=1;i<=numPlayers;i++)scores[i]=0;
+ $("pairs").textContent=0;renderBoard();renderPlayers();setMessage("Player 1: say a card number, for example “Card five.”");speak("Player 1. Say a card number.");
+}
+function renderBoard(){
+ $("board").innerHTML=deck.map(c=>`<button class="card ${c.matched?"matched":""}" data-id="${c.id}">${c.matched?`<span class="animal">${c.icon}</span>`:c.id}</button>`).join("");
+ document.querySelectorAll(".card").forEach(b=>b.onclick=()=>chooseCard(+b.dataset.id));
+}
+function reveal(c){let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.add("revealed");b.innerHTML=`<span class="animal">${c.icon}</span>`}
+function hide(c){if(c.matched)return;let b=document.querySelector(`.card[data-id="${c.id}"]`);b.classList.remove("revealed");b.innerHTML=c.id}
+function setMessage(x){$("message").textContent=x}
+function chooseCard(n){
+ if(!gameStarted||locked||awaitingName)return;let c=deck[n-1];if(!c||c.matched||c===first)return;
+ reveal(c);speak(c.animal.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
+ second=c;locked=true;
+ if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,550)}
+ else{setMessage("Not a match.");speak("Not a match.");setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;nextPlayer()},1200)}
+}
+function beginNameChallenge(){
+ voiceOff();
+ awaitingName=true;answerArmed=false;locked=true;
+ $("promptAnimal").textContent=matchedAnimal.icon;
+ $("nameStatus").textContent="Press the button when you are ready.";
+ $("answerBtn").disabled=false;
+ $("namePrompt").style.display="flex";
+ setMessage("");
+}
+function editDistance(a,b){
+ const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+ for(let i=0;i<=a.length;i++)dp[i][0]=i;
+ for(let j=0;j<=b.length;j++)dp[0][j]=j;
+ for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)
+  dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+ return dp[a.length][b.length];
+}
+function soundsCloseEnough(word,target){
+ word=normalize(word); target=normalize(target);
+ if(!word||!target)return false;
+ if(word===target || word===target+"s")return true;
+ // Be forgiving with speech recognition / learner pronunciation.
+ const maxDist=target.length>=8?3:target.length>=5?2:1;
+ return editDistance(word,target)<=maxDist;
+}
+function animalAnswerAccepted(text,name){
+ const s=normalize(text);
+ const words=s.split(" ").filter(Boolean);
+ // Accept any sentence containing the animal, e.g. "it's an elephant",
+ // plus a reasonably close speech-recognition spelling.
+ return words.some(w=>soundsCloseEnough(w,name));
+}
+function checkAnimal(text){
+ answerArmed=false;
+ let s=normalize(text),name=matchedAnimal.name;
+ let ok=animalAnswerAccepted(s,name);
+
+ if(ok){
+  first.matched=second.matched=true;
+  scores[player]++;
+  $("nameStatus").textContent="Correct";
+  setMessage("Correct! +1 point");
+  speak("Correct");
+  awaitingName=false;
+  renderBoard();renderPlayers();
+  $("pairs").textContent=deck.filter(c=>c.matched).length/2;
+
+  setTimeout(()=>{
+   $("namePrompt").style.display="none";
+   answerArmed=false;
+   first=second=null;
+   if(deck.every(c=>c.matched))finishGame();
+   else{
+    locked=false;
+    voiceOff(); setMessage(`Player ${player}: turn Voice ON when you are ready.`);
+   }
+  },900);
+ }else{
+  $("nameStatus").textContent="Wrong";
+  setMessage("Wrong — no point.");
+  speak("Wrong");
+  awaitingName=false;
+  locked=true;
+
+  setTimeout(()=>{
+   $("namePrompt").style.display="none";
+   answerArmed=false;
+   hide(first);hide(second);
+   first=second=null;
+   locked=false;
+   nextPlayer();
+  },900);
+ }
+}
+function nextPlayer(){player=player%numPlayers+1;$("currentPlayer").textContent=player;renderPlayers();voiceOff();setMessage(`Player ${player}: turn Voice ON when you are ready.`);speak(`Player ${player}, it's your turn.`)}
+function renderPlayers(){$("currentPlayer").textContent=player;$("players").innerHTML=Array.from({length:numPlayers},(_,i)=>i+1).map(p=>`<div class="playerBox ${p===player?"active":""}">Player ${p}: ${scores[p]||0}</div>`).join("")}
+function finishGame(){
+ paused=true;try{recognition&&recognition.stop()}catch(e){}
+ let best=Math.max(...Object.values(scores)),wins=Object.keys(scores).filter(p=>scores[p]===best);
+ setMessage(wins.length===1?`🏆 Player ${wins[0]} wins with ${best} pairs!`:`🤝 Tie! Players ${wins.join(", ")} have ${best} pairs.`);
+ speak(wins.length===1?`Player ${wins[0]} wins!`:"It's a tie!");
+}
+function handleSpeech(text){
+ $("transcript").textContent='Heard: “'+text+'”';
+ if(awaitingName){if(answerArmed)checkAnimal(text);return}
+ let n=parseCard(text);if(n&&n<=12)chooseCard(n);
+}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){
+ recognition=new SR();recognition.lang="en-US";recognition.continuous=false;recognition.interimResults=true;
+ recognition.onstart=()=>{running=true};
+ recognition.onresult=e=>{let text="";for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript+" ";text=text.trim();if(text)handleSpeech(text)};
+ recognition.onend=()=>{running=false;if(gameStarted&&!paused&&!awaitingName)setTimeout(startRecognition,180)};
+ recognition.onerror=e=>{running=false;$("transcript").textContent="Voice: "+e.error};
+}else{$("transcript").textContent="Speech recognition is not supported in this browser."}
+function updateVoiceButton(){
+ const b=$("voiceToggle"); if(!b)return;
+ b.textContent=paused?"🎤 Voice: OFF":"🎤 Voice: ON";
+ b.classList.toggle("voiceOn",!paused); b.classList.toggle("stop",paused);
+}
+function voiceOff(){
+ paused=true; updateVoiceButton();
+ try{if(recognition&&running)recognition.stop()}catch(e){}
+}
+function voiceOn(){
+ if(!gameStarted||awaitingName)return;
+ paused=false; updateVoiceButton(); startRecognition();
+ setMessage(`Player ${player}: say a card number.`);
+}
+function startRecognition(){if(!recognition||running||paused)return;try{recognition.lang="en-US";recognition.start()}catch(e){}}
+$("answerBtn").onclick=()=>{
+ if(!awaitingName)return;
+ answerArmed=true;
+ $("answerBtn").disabled=true;
+ $("nameStatus").textContent="Listening… say the animal now.";
+ // Restart recognition so this button creates a fresh, deliberate answer window.
+ try{if(running)recognition.stop()}catch(e){}
+ setTimeout(()=>{if(recognition){try{recognition.lang="en-US";recognition.start()}catch(e){}}},220);
+};
+$("voiceToggle").onclick=()=>{
+ if(awaitingName)return;
+ if(paused)voiceOn();
+ else{voiceOff();setMessage("Voice is off. Press the Voice button when you are ready.");}
+}
+document.querySelectorAll(".genreBtn").forEach(btn=>btn.onclick=()=>{
+ selectedGenre=btn.dataset.genre;animals=categories[selectedGenre];
+ $("genreScreen").style.display="none";$("app").style.display="block";
+ gameStarted=true;paused=true;buildGame();updateVoiceButton();
+ setMessage("Voice is OFF. Press the Voice button when you are ready to speak.");
+});
+$("backToPlayers").onclick=()=>{$("genreScreen").style.display="none";$("startScreen").style.display="flex"};
+$("startGame").onclick=()=>{numPlayers=Math.max(1,Math.min(10,+$("playerCount").value||2));$("startScreen").style.display="none";$("genrePlayersText").textContent=`${numPlayers} player${numPlayers===1?"":"s"} selected`;$("genreScreen").style.display="flex"}
+$("restart").onclick=()=>{gameStarted=false;paused=true;try{recognition.stop()}catch(e){};$("genreScreen").style.display="none";$("app").style.display="none";$("startScreen").style.display="flex"}
+const tut=[
+ {title:"Choose a card",demo:"5️⃣",text:"Say the number of the card you want to reveal.",main:"Card five",alts:["Five","Number five","Open card five","Choose card five","Show number five"]},
+ {title:"Practise the animal names",demo:"🐾",text:"Push any animal name below to hear its American English pronunciation.",main:"Monkey",alts:["Monkey","Lion","Elephant","Panda","Tiger","Rabbit"]},
+ {title:"Practise all card numbers",demo:"🔢",text:"Push any number below to hear its American English pronunciation.",main:"One",alts:["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve"]}
+];let ti=0;
+function announceTutorialPage(){
+ const d=tut[ti];
+ if(!d)return;
+
+ // Automatically show the same visual as the first spoken item.
+ $("tDemo").classList.remove("tutorialClickedPreview");
+ if(ti===1){
+  const item=animals.find(a=>a.name.toLowerCase()===d.main.toLowerCase());
+  if(item){
+   $("tDemo").classList.add("tutorialClickedPreview");
+   $("tDemo").textContent=item.icon;
+  }
+ }else if(ti===2){
+  const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
+  const n=words.indexOf(d.main.toLowerCase())+1;
+  if(n>0){
+   $("tDemo").classList.add("tutorialClickedPreview");
+   $("tDemo").innerHTML=`<div class="tutorialNumberPreview">${n}</div>`;
+  }
+ }
+
+ try{speechSynthesis.cancel()}catch(e){}
+ speak(d.main);
+ animateDemo();
+}
+function showTut(){
+ let d=tut[ti];
+ $("tTitle").textContent=d.title;
+ $("tDemo").classList.remove("tutorialClickedPreview");
+ $("tDemo").textContent=d.demo;
+ $("tText").textContent=d.text;
+ $("alts").innerHTML=d.alts.map((x,i)=>`<button class="alt" data-i="${i}">${x}</button>`).join("");
+ document.querySelectorAll(".alt").forEach(b=>b.onclick=()=>{
+  const phrase=d.alts[+b.dataset.i];
+  speak(phrase);
+
+  if(ti===1){
+   const item=animals.find(a=>a.name.toLowerCase()===phrase.toLowerCase());
+   if(item){
+    $("tDemo").classList.add("tutorialClickedPreview");
+    $("tDemo").textContent=item.icon;
+   }
+  }else if(ti===2){
+   const words=["one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
+   const n=words.indexOf(phrase.toLowerCase())+1;
+   if(n>0){
+    $("tDemo").classList.add("tutorialClickedPreview");
+    $("tDemo").innerHTML=`<div class="tutorialNumberPreview">${n}</div>`;
+   }
+  }
+  animateDemo();
+ });
+}
+function animateDemo(){$("tDemo").animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:650})}
+$("tutorialBtn").onclick=()=>{try{recognition&&recognition.stop()}catch(e){};$("tutorial").style.display="flex";ti=0;showTut();announceTutorialPage()}
+$("closeTut").onclick=()=>{$("tutorial").style.display="none";if(gameStarted&&!paused)setTimeout(startRecognition,250)}
+$("hearShow").onclick=()=>{speak(tut[ti].main);animateDemo()}
+$("prevT").onclick=()=>{ti=(ti+tut.length-1)%tut.length;showTut();announceTutorialPage()}
+$("nextT").onclick=()=>{ti=(ti+1)%tut.length;showTut();announceTutorialPage()}
+showTut();
+</script>
+</body>
+</html>
