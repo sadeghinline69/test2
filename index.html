@@ -89,12 +89,19 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 @media(max-width:650px){
  .sizeBtn{font-size:12px!important;padding:9px 3px!important}
 }
+
+.manualAnswerRow{display:flex;justify-content:center;gap:22px;margin-top:14px}
+.manualJudge{width:72px;height:58px;border:0;border-radius:16px;color:white;font-size:38px;font-weight:900;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.18)}
+.correctJudge{background:#159957}
+.wrongJudge{background:#d54b4b}
+.manualJudge:active{transform:translateY(2px);box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.manualHint{font-size:13px;margin-top:8px;color:#667085}
 </style>
 </head>
 <body>
 <div id="startScreen" class="screen">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 38</div>
+  <div class="badge">Memory Game • Version 40</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose the number of players and a category, then start the game.</p>
   <label><b>Players (1–10)</b><br>
@@ -126,7 +133,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 </div>
 
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 38</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 40</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/<span id="pairTotal">6</span></div></div>
  </div>
  <div id="players" class="players"></div>
@@ -150,6 +157,11 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
   <h2>🎉 It's a match!</h2><div id="promptAnimal"></div>
   <p><b>Press the button, then say the animal's name.</b></p>
   <button id="answerBtn" class="primary">🎤 Say the Animal</button>
+  <div class="manualAnswerRow">
+   <button id="manualCorrect" type="button" class="manualJudge correctJudge" aria-label="Mark answer correct">✓</button>
+   <button id="manualWrong" type="button" class="manualJudge wrongJudge" aria-label="Mark answer wrong">✕</button>
+  </div>
+  <div class="manualHint">Use these buttons if voice recognition is unavailable.</div>
   <div id="nameStatus" style="margin-top:10px"></div>
  </div>
 </div>
@@ -471,7 +483,18 @@ function chooseCard(n){
  reveal(c);speak(c.name); if(!first){first=c;setMessage(`Card ${n} revealed. Choose another card.`);return}
  second=c;locked=true;
  if(first.pair===second.pair){matchedAnimal=first;setTimeout(beginNameChallenge,550)}
- else{playerMismatches++;updateLiveStats();setMessage("Not a match.");setTimeout(()=>speak("Not a match."),650);setTimeout(()=>{hide(first);hide(second);first=second=null;locked=false;voiceOn();setMessage(`Player ${player}: voice is ON. Continue your board.`)},1500)}
+ else{
+  playerMismatches++;updateLiveStats();
+  setMessage("Checking the pair...");
+  setTimeout(()=>{
+   setMessage("Not a match.");
+   speak("Not a match.");
+  },1800);
+  setTimeout(()=>{
+   hide(first);hide(second);first=second=null;locked=false;voiceOn();
+   setMessage(`Player ${player}: voice is ON. Continue your board.`);
+  },3000)
+ }
 }
 const namingPrompts=[
  "Say the name of the object.",
@@ -553,7 +576,7 @@ function animalAnswerAccepted(text,name){
  if(!target.includes(" "))return words.some(w=>soundsCloseEnough(w,target));
  return false;
 }
-function checkAnimal(text){
+function applyNameResult(ok){
  answerArmed=false;
  try{if(running)recognition.stop()}catch(e){}
  paused=true;updateVoiceButton();
@@ -561,8 +584,6 @@ function checkAnimal(text){
  ab.classList.remove("vocabOn");
  ab.classList.add("vocabOff");
  ab.textContent="🔴 Voice OFF";
- let s=normalize(text),name=matchedAnimal.name;
- let ok=animalAnswerAccepted(s,name);
 
  if(ok){
   first.matched=second.matched=true;
@@ -606,6 +627,12 @@ function checkAnimal(text){
   },900);
  }
 }
+function checkAnimal(text){
+ if(!awaitingName || !matchedAnimal)return;
+ let s=normalize(text),name=matchedAnimal.name;
+ applyNameResult(animalAnswerAccepted(s,name));
+}
+
 function nextPlayer(){player=player%numPlayers+1;$("currentPlayer").textContent=player;renderPlayers();voiceOff();setMessage(`Player ${player}: turn Voice ON when you are ready.`);speak(`Player ${player}, it's your turn.`)}
 function renderPlayers(){$("currentPlayer").textContent=player;$("players").innerHTML=Array.from({length:numPlayers},(_,i)=>i+1).map(p=>`<div class="playerBox ${p===player?"active":""}">Player ${p}: ${scores[p]||0}</div>`).join("")}
 function finishPlayerGame(){
@@ -709,6 +736,8 @@ document.querySelectorAll(".sizeBtn").forEach(btn=>btn.onclick=()=>{
  selectedSize=btn.dataset.size;
  document.querySelectorAll(".sizeBtn").forEach(b=>b.classList.toggle("selectedSize",b===btn));
 });
+$("manualCorrect").onclick=()=>{if(awaitingName&&matchedAnimal)applyNameResult(true)};
+$("manualWrong").onclick=()=>{if(awaitingName&&matchedAnimal)applyNameResult(false)};
 $("startGame").onclick=()=>{
  numPlayers=Math.max(1,Math.min(10,+$("playerCount").value||2));
  animals=pickSix(categories[selectedGenre],selectedDifficulty,boardSizes[selectedSize].pairs);
