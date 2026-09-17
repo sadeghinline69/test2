@@ -81,7 +81,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 <body>
 <div id="startScreen" class="screen">
  <div class="panel">
-  <div class="badge">Memory Game • Version 26</div>
+  <div class="badge">Memory Game • Version 27</div>
   <div class="big">🐾 English Memory Match</div>
   <p>Choose cards by saying their numbers. Match two animals, then say the animal's name to earn the point.</p>
   <label><b>Players (1–10)</b><br><input id="playerCount" type="number" min="1" max="10" value="2" style="width:90px;padding:10px;margin:10px;border-radius:10px;border:1px solid #bbc7dd"></label><br>
@@ -91,7 +91,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 <div id="genreScreen" class="screen" style="display:none">
  <div class="startCard">
-  <div class="badge">Memory Game • Version 26</div>
+  <div class="badge">Memory Game • Version 27</div>
   <h1>Choose a Category</h1>
   <p id="genrePlayersText"></p>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0">
@@ -104,7 +104,7 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
  </div>
 </div>
 <div id="app">
- <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 26</span></h2>
+ <div class="top"><h2 style="margin:5px">🐾 English Memory Match <span class="badge">Version 27</span></h2>
   <div class="stats"><div class="pill">Player <span id="currentPlayer">1</span></div><div class="pill">Pairs <span id="pairs">0</span>/6</div></div>
  </div>
  <div id="players" class="players"></div>
@@ -154,13 +154,40 @@ button,input{font:inherit}.screen{position:fixed;inset:0;background:linear-gradi
 
 <script>
 const categories={
- animals:[{name:"monkey",icon:"🐒"},{name:"lion",icon:"🦁"},{name:"elephant",icon:"🐘"},{name:"panda",icon:"🐼"},{name:"tiger",icon:"🐯"},{name:"rabbit",icon:"🐰"}],
- food:[{name:"pizza",icon:"🍕"},{name:"hamburger",icon:"🍔"},{name:"sandwich",icon:"🥪"},{name:"cheese",icon:"🧀"},{name:"egg",icon:"🥚"},{name:"bread",icon:"🍞"}],
- sports:[{name:"football",icon:"⚽"},{name:"basketball",icon:"🏀"},{name:"tennis",icon:"🎾"},{name:"baseball",icon:"⚾"},{name:"volleyball",icon:"🏐"},{name:"boxing",icon:"🥊"}],
- fruit:[{name:"apple",icon:"🍎"},{name:"banana",icon:"🍌"},{name:"orange",icon:"🍊"},{name:"grapes",icon:"🍇"},{name:"strawberry",icon:"🍓"},{name:"watermelon",icon:"🍉"}]
+ animals:[
+  {name:"monkey",icon:"🐒"},{name:"lion",icon:"🦁"},{name:"elephant",icon:"🐘"},{name:"panda",icon:"🐼"},{name:"tiger",icon:"🐯"},{name:"rabbit",icon:"🐰"},
+  {name:"dog",icon:"🐶"},{name:"cat",icon:"🐱"},{name:"bear",icon:"🐻"},{name:"fox",icon:"🦊"},{name:"wolf",icon:"🐺"},{name:"cow",icon:"🐮"},
+  {name:"pig",icon:"🐷"},{name:"frog",icon:"🐸"},{name:"chicken",icon:"🐔"},{name:"penguin",icon:"🐧"},{name:"bird",icon:"🐦"},{name:"duck",icon:"🦆"},
+  {name:"eagle",icon:"🦅"},{name:"owl",icon:"🦉"},{name:"horse",icon:"🐴"},{name:"zebra",icon:"🦓"},{name:"giraffe",icon:"🦒"},{name:"deer",icon:"🦌"},
+  {name:"camel",icon:"🐫"},{name:"kangaroo",icon:"🦘"},{name:"koala",icon:"🐨"},{name:"mouse",icon:"🐭"},{name:"sheep",icon:"🐑"},{name:"goat",icon:"🐐"}
+ ],
+ food:[
+  {name:"pizza",icon:"🍕"},{name:"hamburger",icon:"🍔"},{name:"sandwich",icon:"🥪"},{name:"cheese",icon:"🧀"},{name:"egg",icon:"🥚"},{name:"bread",icon:"🍞"},
+  {name:"rice",icon:"🍚"},{name:"spaghetti",icon:"🍝"},{name:"soup",icon:"🍲"},{name:"salad",icon:"🥗"},{name:"hot dog",icon:"🌭"},{name:"taco",icon:"🌮"},
+  {name:"burrito",icon:"🌯"},{name:"fries",icon:"🍟"},{name:"pancakes",icon:"🥞"},{name:"waffle",icon:"🧇"},{name:"bacon",icon:"🥓"},{name:"chicken",icon:"🍗"},
+  {name:"steak",icon:"🥩"},{name:"shrimp",icon:"🍤"},{name:"sushi",icon:"🍣"},{name:"popcorn",icon:"🍿"},{name:"cookie",icon:"🍪"},{name:"cake",icon:"🍰"},
+  {name:"chocolate",icon:"🍫"},{name:"candy",icon:"🍬"},{name:"ice cream",icon:"🍦"},{name:"doughnut",icon:"🍩"},{name:"pretzel",icon:"🥨"},{name:"butter",icon:"🧈"}
+ ],
+ sports:[
+  {name:"football",icon:"⚽"},{name:"basketball",icon:"🏀"},{name:"tennis",icon:"🎾"},{name:"baseball",icon:"⚾"},{name:"volleyball",icon:"🏐"},{name:"boxing",icon:"🥊"},
+  {name:"rugby",icon:"🏉"},{name:"badminton",icon:"🏸"},{name:"table tennis",icon:"🏓"},{name:"golf",icon:"⛳"},{name:"hockey",icon:"🏒"},{name:"cricket",icon:"🏏"},
+  {name:"skiing",icon:"⛷️"},{name:"snowboarding",icon:"🏂"},{name:"swimming",icon:"🏊"},{name:"surfing",icon:"🏄"},{name:"cycling",icon:"🚴"},{name:"running",icon:"🏃"},
+  {name:"wrestling",icon:"🤼"},{name:"fencing",icon:"🤺"},{name:"archery",icon:"🏹"},{name:"weightlifting",icon:"🏋️"},{name:"gymnastics",icon:"🤸"},{name:"skating",icon:"⛸️"},
+  {name:"bowling",icon:"🎳"},{name:"karate",icon:"🥋"},{name:"rowing",icon:"🚣"},{name:"climbing",icon:"🧗"},{name:"horse racing",icon:"🏇"},{name:"handball",icon:"🤾"}
+ ],
+ fruit:[
+  {name:"apple",icon:"🍎"},{name:"banana",icon:"🍌"},{name:"orange",icon:"🍊"},{name:"grapes",icon:"🍇"},{name:"strawberry",icon:"🍓"},{name:"watermelon",icon:"🍉"},
+  {name:"pear",icon:"🍐"},{name:"peach",icon:"🍑"},{name:"cherry",icon:"🍒"},{name:"pineapple",icon:"🍍"},{name:"kiwi",icon:"🥝"},{name:"mango",icon:"🥭"},
+  {name:"lemon",icon:"🍋"},{name:"melon",icon:"🍈"},{name:"blueberry",icon:"🫐"},{name:"coconut",icon:"🥥"},{name:"avocado",icon:"🥑"},{name:"tomato",icon:"🍅"},
+  {name:"lime",icon:"🍋"},{name:"raspberry",icon:"🍓"},{name:"blackberry",icon:"🫐"},{name:"plum",icon:"🟣"},{name:"apricot",icon:"🍑"},{name:"pomegranate",icon:"🔴"},
+  {name:"papaya",icon:"🥭"},{name:"fig",icon:"🟣"},{name:"grapefruit",icon:"🍊"},{name:"tangerine",icon:"🍊"},{name:"dragon fruit",icon:"🐉"},{name:"passion fruit",icon:"🟡"}
+ ]
 };
+function pickSix(pool){
+ return shuffle(pool.map(x=>({...x}))).slice(0,6);
+}
 let selectedGenre="animals";
-let animals=categories.animals;
+let animals=pickSix(categories.animals);
 let deck=[],first=null,second=null,locked=false,awaitingName=false,matchedAnimal=null;
 let player=1,numPlayers=2,scores={},recognition=null,running=false,paused=true,gameStarted=false,preferredVoice=null,answerArmed=false;
 let masterLayout=null, playerResults=[];
@@ -313,21 +340,20 @@ function animalAnswerAccepted(text,name){
  const target=normalize(name);
  if(!s||!target)return false;
 
- // Exact object inside a natural sentence:
- // "lion", "a lion", "it is a lion", "it's a lion", etc.
+ // Accept the exact object as a whole phrase inside a natural sentence,
+ // including multiword answers such as "table tennis" or "ice cream".
+ const padded=` ${s} `;
+ if(padded.includes(` ${target} `))return true;
+ if(padded.includes(` ${target}s `))return true;
+
  const words=s.split(" ").filter(Boolean);
- if(words.includes(target))return true;
-
- // Common plural: lion -> lions, apple -> apples, etc.
- if(words.includes(target+"s"))return true;
-
- // Basic English plural endings for future vocabulary.
- if(target.endsWith("y") && words.includes(target.slice(0,-1)+"ies"))return true;
+ if(target.endsWith("y") && padded.includes(` ${target.slice(0,-1)}ies `))return true;
  if((target.endsWith("s")||target.endsWith("x")||target.endsWith("ch")||target.endsWith("sh")) &&
-    words.includes(target+"es"))return true;
+    padded.includes(` ${target}es `))return true;
 
- // Keep the existing forgiving speech-recognition/pronunciation matching.
- return words.some(w=>soundsCloseEnough(w,target));
+ // Near-recognition tolerance for single-word vocabulary.
+ if(!target.includes(" "))return words.some(w=>soundsCloseEnough(w,target));
+ return false;
 }
 function checkAnimal(text){
  answerArmed=false;
@@ -464,7 +490,7 @@ $("voiceToggle").onclick=()=>{
  else{voiceOff();setMessage("Voice is off. Press the Voice button when you are ready.");}
 }
 document.querySelectorAll(".genreBtn").forEach(btn=>btn.onclick=()=>{
- selectedGenre=btn.dataset.genre;animals=categories[selectedGenre];
+ selectedGenre=btn.dataset.genre;animals=pickSix(categories[selectedGenre]);
  $("genreScreen").style.display="none";$("app").style.display="block";
  gameStarted=true;paused=true;buildGame();updateVoiceButton();
  setMessage("Voice is OFF. Press the Voice button when you are ready to speak.");
