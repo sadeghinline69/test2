@@ -1,0 +1,313 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mafia Moderator</title><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+body{margin:0;background:#101217;color:#f5f5f5;font:16px system-ui}.w{max-width:720px;margin:auto;padding:18px}.c{background:#1b2029;border:1px solid #333b49;border-radius:18px;padding:17px;margin:12px 0}.hide{display:none!important}
+button,input,select{font:inherit;min-height:48px;border-radius:11px;border:1px solid #414a59;padding:9px 12px}input,select{width:100%;box-sizing:border-box;background:#11151b;color:white}button{font-weight:800;cursor:pointer}.red{background:#cf4545;color:white}.green{background:#278858;color:white}.amber{background:#b87518;color:white}
+.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}.p{display:flex;justify-content:space-between;padding:11px;border-bottom:1px solid #343c49}.dead{opacity:.45;text-decoration:line-through}.code{text-align:center;font-size:30px;font-weight:900;letter-spacing:.12em}.role{text-align:center;font-size:28px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.note{background:#29313e;padding:12px;border-radius:11px}.muted{color:#aeb7c5}.phase{font-weight:900;text-transform:uppercase;letter-spacing:.1em}
+.playerNameTop{font-size:22px;font-weight:900;margin:0 0 12px;text-align:center;color:#fff}
+.roleBack{min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:linear-gradient(145deg,#202733,#11151c);border:2px solid #566174;border-radius:18px;cursor:pointer;user-select:none}
+.roleBack .mark{font-size:58px}.roleBack .tap{font-weight:900}
+.roleReveal{min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px;border-radius:18px;background:#262d39}
+.roleReveal .bigRole{font-size:31px;font-weight:900;margin:8px 0}.roleReveal .desc{color:#c5cbd4;max-width:420px}
+.roleLocked{min-height:120px;display:flex;align-items:center;justify-content:center;text-align:center;color:#aeb7c5;background:#171b22;border:1px dashed #424b5a;border-radius:16px;padding:18px}@media(max-width:420px){.grid{grid-template-columns:1fr}}
+</style></head><body><main class="w">
+<div style="text-align:right;color:#aeb7c5;font-size:13px;font-weight:800;margin-bottom:4px">Version 21</div><section id="home"><h1>🕵️ Mafia</h1><p class="muted">Online Mafia with an automated moderator.</p><div class="c"><label>Your name</label><input id="nm" maxlength="24"><div class="row" style="margin-top:10px"><button id="create" class="red">Create room</button><button id="showJoin">Join room</button></div><div id="joinBox" class="hide"><input id="codeIn" maxlength="6" placeholder="Room code" style="margin-top:10px"><div class="muted" style="font-size:12px;margin-top:7px">Reconnecting? Enter the same room code and exactly the same player name.</div><button id="join" class="green" style="width:100%;margin-top:8px">Join</button></div></div></section>
+<section id="lobby" class="hide"><div class="c"><div class="muted">ROOM CODE</div><div id="code" class="code"></div></div><div class="c"><h2>Players</h2><div id="roster"></div></div><div id="setup" class="c hide"><h2>Classic scenario</h2><div class="row"><label>Mafia<select id="mc"><option>1</option><option selected>2</option><option>3</option></select></label><label>Doctor<select id="dc"><option selected>1</option><option>0</option></select></label><label>Detective<select id="xc"><option selected>1</option><option>0</option></select></label></div><button id="start" class="red" style="width:100%;margin-top:12px">Start game</button></div><div id="wait" class="c hide">Waiting for the host…</div></section>
+<section id="game" class="hide"><div id="playerNameTop" class="playerNameTop"></div><div id="playerRoleTop" style="text-align:center;font-size:14px;font-weight:800;margin-top:-8px;margin-bottom:12px;min-height:20px"></div><div class="c"><div id="phase" class="phase"></div><div id="day"></div></div>
+<div id="roleCardPanel" class="c">
+ <div id="roleBack" class="roleBack" role="button" tabindex="0" aria-label="Reveal your role once"><div class="mark">🎴</div><div class="tap">Tap to reveal your role</div><div class="muted">You can reveal it only once.</div></div>
+ <div id="roleReveal" class="roleReveal hide"><div class="muted">YOUR ROLE</div><div id="role" class="bigRole"></div><div id="help" class="desc"></div><div class="muted" style="margin-top:12px">This card will hide automatically.</div></div>
+ <div id="roleLocked" class="roleLocked hide">🔒 Your role card has already been viewed.</div>
+</div><div id="announce" class="note"></div>
+<div id="night" class="c hide"><h2 id="actionTitle"></h2><div id="targets" class="grid"></div><div id="done" class="note hide">Action recorded. Wait for the other players.</div></div>
+<div id="dayCard" class="c hide"><h2>☀️ Daytime</h2><p><b>Talk and vote without the app.</b> After the vote, the host taps the player who received the most votes to mark them dead.</p><div id="players"></div><div id="hostKill" class="hide"><h3 id="dayHostTitle">Moderator controls</h3><div id="kills" class="grid"></div><button id="noKill" type="button" class="amber" style="width:100%;margin-top:9px">🌙 Start Night</button></div></div>
+<div id="end" class="c hide"><h1 id="winner"></h1><p>Game over.</p></div></section>
+</main><script>
+(()=>{const $=x=>document.getElementById(x);let peer,hostConn,isHost=false,room="",myId="",myName="",conns=new Map();
+let S={players:[],phase:"lobby",day:0,roles:{},alive:{},actions:{},announcement:"",winner:""};
+let roleViewed=false,roleRevealing=false,roleHideTimer=null;
+const sections=["home","lobby","game"];function show(x){sections.forEach(y=>$(y).classList.toggle("hide",x!==y))}
+const alive=()=>S.players.filter(p=>S.alive[p.id]), me=()=>S.players.find(p=>p.id===myId);
+function send(c,m){try{if(c&&c.open)c.send(m)}catch(e){}}
+function viewFor(id){return{...S,roles:{[id]:S.roles[id]},actions:{}}}
+function sync(){if(!isHost)return;conns.forEach((c,id)=>send(c,{type:"state",s:viewFor(id)}));render()}
+function render(){if(S.phase==="lobby"){show("lobby");$("roster").innerHTML=S.players.map((p,i)=>`<div class="p"><span>${i+1}. ${esc(p.name)}</span><b>${p.id===myId?"You":""}</b></div>`).join("");$("setup").classList.toggle("hide",!isHost);$("wait").classList.toggle("hide",isHost);return}
+show("game");let r=S.roles[myId]||"Citizen",a=!!S.alive[myId];
+$("playerNameTop").textContent=(me()&&me().name)||myName||"Player";
+$("playerRoleTop").textContent=(roleViewed&&S.roles&&S.roles[myId])?S.roles[myId]:"";
+$("phase").textContent=S.phase;$("day").textContent=(S.phase==="night"?"Night ":"Day ")+S.day;
+$("role").textContent=r;
+$("help").textContent=r==="Mafia"?"You are on the Mafia team. At night, choose a player to eliminate.":r==="Doctor"?"You are a Citizen. At night, choose one living player to protect.":r==="Detective"?"You are a Citizen. At night, choose one living player to investigate.":"You are a Citizen. Discuss during the day and try to identify the Mafia.";
+renderRoleCard();
+if(!detectiveResultActive)$("announce").textContent=S.announcement||"";
+announcePhaseOnce();
+$("night").classList.toggle("hide",S.phase!=="night"||!a);$("dayCard").classList.toggle("hide",S.phase!=="day");$("end").classList.toggle("hide",S.phase!=="ended");if(S.phase==="night"&&a)nightUI(r);if(S.phase==="day")dayUI();if(S.phase==="ended"){$("winner").textContent=S.winner+" wins!";announceWinnerOnce()}}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function renderRoleCard(){
+ if(S.phase==="lobby")return;
+ $("roleBack").classList.toggle("hide",roleViewed||roleRevealing);
+ $("roleReveal").classList.toggle("hide",!roleRevealing);
+ $("roleLocked").classList.toggle("hide",!roleViewed||roleRevealing);
+}
+function revealRoleOnce(){
+ if(roleViewed||roleRevealing||S.phase==="lobby"||S.phase==="ended")return;
+ roleRevealing=true;renderRoleCard();
+ clearTimeout(roleHideTimer);
+ roleHideTimer=setTimeout(()=>{roleRevealing=false;roleViewed=true;renderRoleCard();render();if(isHost){S.roleSeen=S.roleSeen||{};S.roleSeen[myId]=true;sync()}else send(hostConn,{type:"roleSeen"})},4000);
+}
+function nightUI(r){
+ $("actionTitle").textContent="Choose someone";
+ let done=!!S.mineDone;
+ $("done").classList.toggle("hide",!done);
+ $("targets").classList.toggle("hide",done);
+ if(done)return;
+
+ let ps=alive().filter(p=>p.id!==myId||r==="Doctor"||r==="Citizen");
+ $("targets").innerHTML="";
+
+ ps.forEach(p=>{
+   let b=document.createElement("button");
+   b.type="button";
+   b.textContent=p.name;
+   b.onclick=()=>act(r,p.id);
+   $("targets").appendChild(b);
+ });
+
+ let go=document.createElement("button");
+ go.type="button";
+ go.textContent="☀ Go to Day";
+ go.style.marginTop="14px";
+ go.onclick=()=>passNight(r);
+ $("targets").appendChild(go);
+}
+function act(r,t){S.mineDone=true;if(isHost)record(myId,r,t);else send(hostConn,{type:"action",role:r,target:t});render()}
+function passNight(r){
+ S.mineDone=true;
+ if(isHost)record(myId,r,"__PASS__");
+ else send(hostConn,{type:"action",role:r,target:"__PASS__"});
+ render();
+}
+function record(id,r,t){
+ if(S.phase!=="night"||!S.alive[id]||S.roles[id]!==r||!["Mafia","Doctor","Detective","Citizen"].includes(r))return;
+ if(t===null)return;
+ S.actions[id]={role:r,target:t};
+ if(r==="Detective"&&t!=="__PASS__"){
+   const idx=S.players.findIndex(p=>p.id===t)+1;
+   const target=S.players.find(p=>p.id===t);
+   const team=S.roles[t]==="Mafia"?"Mafia":"Citizen";
+   const txt=`Player number ${idx} (${target.name}) is ${team}.`;
+   if(id===myId&&isHost){
+     showDetectiveResult(txt);
+   }else{
+     const detectiveConn=conns.get(id);
+     if(detectiveConn)send(detectiveConn,{type:"detectiveResult",text:txt});
+   }
+ }
+ if(required().every(x=>S.actions[x]))setTimeout(resolveNight,500);
+ sync();
+ if(S.pendingDetective){const q=S.pendingDetective;delete S.pendingDetective;send(conns.get(q.id),{type:"detectiveResult",text:q.text})}
+}
+let detectiveResultTimer=null;
+let detectiveResultActive=false;
+function showDetectiveResult(txt){
+ if(!S.roles||S.roles[myId]!=="Detective")return;
+ if(detectiveResultTimer)clearTimeout(detectiveResultTimer);
+ detectiveResultActive=true;
+ const box=$("announce");
+ box.textContent=txt;
+ detectiveResultTimer=setTimeout(()=>{
+   detectiveResultActive=false;
+   box.textContent=S.announcement||("Night "+S.day+" begins.");
+ },5000);
+}
+function required(){return alive().map(p=>p.id)}
+function resolveNight(){if(!isHost||S.phase!=="night")return;let mv={};Object.values(S.actions).filter(a=>a.role==="Mafia").forEach(a=>mv[a.target]=(mv[a.target]||0)+1);let kill=Object.keys(mv).sort((a,b)=>mv[b]-mv[a])[0],doc=Object.values(S.actions).find(a=>a.role==="Doctor");let text="The city wakes up. ";S.lastNightDeaths=[];if(kill&&(!doc||doc.target!==kill)){S.alive[kill]=false;S.lastNightDeaths.push(kill);text+=S.players.find(p=>p.id===kill).name+" died during the night."}else text+="Nobody died during the night.";S.actions={};S.phase="day";S.announcement=text;win();sync()}
+function dayUI(){
+ $("players").innerHTML=S.players.map(p=>`<div class="p ${S.alive[p.id]?"":"dead"}"><span>${esc(p.name)}</span><b>${S.alive[p.id]?"Alive":"Dead"}</b></div>`).join("");
+ $("hostKill").classList.toggle("hide",!isHost);
+ if(isHost){
+   $("dayHostTitle").textContent="Moderator controls";
+   $("noKill").textContent="🌙 Start Night";
+   $("noKill").disabled=false;
+   $("kills").innerHTML="";
+   alive().forEach(p=>{
+     let b=document.createElement("button");
+     b.type="button";
+     b.textContent="☠ Eliminate "+p.name;
+     b.disabled=!everyoneSawRole();
+     b.onclick=()=>eliminate(p.id);
+     $("kills").appendChild(b);
+   });
+ }
+}
+function everyoneSawRole(){S.roleSeen=S.roleSeen||{};return alive().every(p=>S.roleSeen[p.id])}
+function requireEveryoneSawRole(){
+ if(everyoneSawRole())return true;
+ const w=alive().filter(p=>!S.roleSeen[p.id]).map(p=>p.name);
+ let msg="You cannot start the night yet. Every player must select and reveal their role card before the game can go to the night phase.";
+ if(w.length)msg+="\n\nStill waiting for: "+w.join(", ");
+ alert(msg);
+ return false;
+}
+function eliminate(id){if(!isHost||!requireEveryoneSawRole())return;const p=S.players.find(x=>x.id===id);if(!p||!S.alive[id])return;const n=S.players.findIndex(x=>x.id===id)+1;if(!confirm("Are you sure you want to eliminate Player number "+n+" ("+p.name+")?"))return;S.alive[id]=false;S.announcement=S.players.find(p=>p.id===id).name+" was eliminated by the daytime vote.";if(!win())sync();else sync()}
+function startNight(){
+ if(!isHost)return;
+ if(!requireEveryoneSawRole())return;
+ const hadNight=!!S.hasHadNight;
+ if(hadNight)S.day++;
+ S.hasHadNight=true;
+ S.phase="night";
+ S.actions={};
+ S.mineDone=false;
+ S.lastNightDeaths=S.lastNightDeaths||[];
+ S.announcement="Night "+S.day+" begins.";
+ sync();
+}
+const DAY_PHRASES=[
+ "Good morning, city. It is daytime. Everyone, wake up and begin the discussion.",
+ "The sun is up. The city is awake. It is time to talk.",
+ "Morning has arrived. Wake up, everyone. The day phase begins now.",
+ "The night is over. Citizens, open your eyes. It is time for discussion.",
+ "A new day begins. Everyone, wake up and face the city.",
+ "Daylight has returned. Wake up, everyone. The discussion begins.",
+ "The city wakes to a new day. Open your eyes and start talking.",
+ "Good morning. It is day now. Everyone may speak."
+];
+const NIGHT_PHRASES=[
+ "Night has fallen. Everyone, close your eyes and go to sleep.",
+ "The city is going to sleep. It is night. Please close your eyes.",
+ "Darkness falls over the city. Everyone, go to sleep.",
+ "The day is over. Night begins now. Everyone, close your eyes.",
+ "The city grows quiet. It is nighttime. Please go to sleep.",
+ "Night has arrived. Everyone, close your eyes and remain silent.",
+ "The sun has set. The city sleeps. Night roles, prepare for your turn.",
+ "It is night now. Everyone, please sleep. The city must be silent."
+];
+let lastDayPhrase=-1,lastNightPhrase=-1,lastSpokenPhaseKey="";
+function pickDifferent(list,last){
+ let i=Math.floor(Math.random()*list.length);
+ if(list.length>1&&i===last)i=(i+1+Math.floor(Math.random()*(list.length-1)))%list.length;
+ return i;
+}
+function speakText(text,delay=0){
+ if(!isHost)return;
+ setTimeout(()=>{
+  try{
+   if("speechSynthesis" in window){
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang="en-US";u.rate=.88;u.pitch=1;u.volume=1;
+    speechSynthesis.speak(u);
+   }
+  }catch(e){}
+ },delay);
+}
+function publicNightResultSpeech(){
+ if(!S.hasHadNight)return "";
+ const dead=S.lastNightDeaths||[];
+ if(dead.length===0){
+   const options=["No one died during the night.","Nobody is dead. The city survived the night.","Nothing happened during the night. Everyone is still alive."];
+   return options[Math.floor(Math.random()*options.length)];
+ }
+ const labels=dead.map(id=>{
+   const i=S.players.findIndex(p=>p.id===id)+1;
+   const p=S.players.find(p=>p.id===id);
+   return p?`Player number ${i}, ${p.name}`:`Player number ${i}`;
+ });
+ if(labels.length===1)return labels[0]+" is dead.";
+ if(labels.length===2)return labels[0]+" and "+labels[1]+" are dead.";
+ return labels.slice(0,-1).join(", ")+", and "+labels[labels.length-1]+" are dead.";
+}
+function announcePhaseOnce(){
+ if(!["day","night"].includes(S.phase))return;
+ const key=S.phase+"-"+S.day;
+ if(lastSpokenPhaseKey===key)return;
+ lastSpokenPhaseKey=key;
+ let text="";
+ if(S.phase==="day"){
+  lastDayPhrase=pickDifferent(DAY_PHRASES,lastDayPhrase);
+  text=DAY_PHRASES[lastDayPhrase];
+  const result=publicNightResultSpeech();
+  if(result)text+=" "+result;
+ }else{
+  lastNightPhrase=pickDifferent(NIGHT_PHRASES,lastNightPhrase);text=NIGHT_PHRASES[lastNightPhrase];
+ }
+ speakText(text,180);
+}
+function playVictoryAnnouncement(team){
+ if(!isHost)return;
+ try{
+   const AC=window.AudioContext||window.webkitAudioContext;
+   if(AC){
+     const ctx=new AC(),now=ctx.currentTime;
+     [0,.22].forEach((delay,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=i?1046:880;g.gain.setValueAtTime(.0001,now+delay);g.gain.exponentialRampToValueAtTime(.32,now+delay+.015);g.gain.exponentialRampToValueAtTime(.0001,now+delay+.18);o.connect(g);g.connect(ctx.destination);o.start(now+delay);o.stop(now+delay+.2)});
+     setTimeout(()=>{try{ctx.close()}catch(e){}},900);
+   }
+ }catch(e){}
+ setTimeout(()=>{
+   try{
+     if("speechSynthesis" in window){
+       speechSynthesis.cancel();
+       const u=new SpeechSynthesisUtterance(team+" wins!");
+       u.lang="en-US";u.rate=.82;u.pitch=1;u.volume=1;
+       speechSynthesis.speak(u);
+     }
+   }catch(e){}
+ },520);
+}
+function announceWinnerOnce(){
+ if(S.phase!=="ended"||!S.winner)return;
+ const key=S.winner+"-"+S.day;
+ if(window.__mafiaWinnerKey===key)return;
+ window.__mafiaWinnerKey=key;
+ playVictoryAnnouncement(S.winner);
+}
+function win(){let a=alive(),m=a.filter(p=>S.roles[p.id]==="Mafia").length,c=a.length-m;if(m===0){S.phase="ended";S.winner="Citizen team";S.announcement="Citizen team wins! All Mafia players have been eliminated.";return true}if(m>=c){S.phase="ended";S.winner="Mafia team";S.announcement="Mafia team wins! The number of living Mafia is now equal to or greater than the number of living Citizens.";return true}return false}
+function roles(){let n=S.players.length,m=+$("mc").value,d=+$("dc").value,x=+$("xc").value;if(m+d+x>=n){alert("Reduce special roles. At least one ordinary Citizen is required.");return false}let a=[...Array(m).fill("Mafia"),...Array(d).fill("Doctor"),...Array(x).fill("Detective"),...Array(n-m-d-x).fill("Citizen")];for(let i=a.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}S.players.forEach((p,i)=>{S.roles[p.id]=a[i];S.alive[p.id]=true});return true}
+function host(){isHost=true;room=Math.random().toString(36).slice(2,8).toUpperCase();myId="host-"+Math.random().toString(36).slice(2);S.players=[{id:myId,name:myName}];peer=new Peer("mafia-"+room.toLowerCase());peer.on("open",()=>{$("code").textContent=room;show("lobby");render()});peer.on("connection",c=>{c.on("data",m=>{if(m.type==="hello"){
+ if(S.phase!=="lobby"){
+   const wanted=(m.name||"").trim().toLowerCase();
+   const oldPlayer=S.players.find(p=>p.name.trim().toLowerCase()===wanted);
+   if(!oldPlayer)return send(c,{type:"error",text:"Game already started. To reconnect, enter the exact name you used in this game."});
+   const oldId=oldPlayer.id;
+   const newId=c.peer;
+   if(oldId!==newId){
+     oldPlayer.id=newId;
+     if(S.roles&&Object.prototype.hasOwnProperty.call(S.roles,oldId)){S.roles[newId]=S.roles[oldId];delete S.roles[oldId]}
+     if(S.alive&&Object.prototype.hasOwnProperty.call(S.alive,oldId)){S.alive[newId]=S.alive[oldId];delete S.alive[oldId]}
+     if(S.actions&&Object.prototype.hasOwnProperty.call(S.actions,oldId)){S.actions[newId]=S.actions[oldId];delete S.actions[oldId]}
+     if(S.roleSeen&&Object.prototype.hasOwnProperty.call(S.roleSeen,oldId)){S.roleSeen[newId]=S.roleSeen[oldId];delete S.roleSeen[oldId]}
+     conns.delete(oldId);
+   }
+   conns.set(newId,c);
+   send(c,{type:"reconnected",id:newId});
+   send(c,{type:"state",s:viewFor(newId)});
+   sync();
+   return;
+ }
+ conns.set(c.peer,c);S.players.push({id:c.peer,name:m.name});sync()
+}if(m.type==="action")record(c.peer,m.role,m.target);if(m.type==="roleSeen"){S.roleSeen=S.roleSeen||{};S.roleSeen[c.peer]=true;sync()}});c.on("close",()=>{if(S.phase==="lobby"){conns.delete(c.peer);S.players=S.players.filter(p=>p.id!==c.peer);sync()}})});peer.on("error",e=>alert("Connection error: "+e.type))}
+function guest(){isHost=false;room=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(room))return alert("Enter the 6-character room code.");peer=new Peer();peer.on("open",id=>{myId=id;hostConn=peer.connect("mafia-"+room.toLowerCase(),{reliable:true});hostConn.on("open",()=>{send(hostConn,{type:"hello",name:myName});$("code").textContent=room;show("lobby")});hostConn.on("data",m=>{if(m.type==="reconnected"){myId=m.id;roleViewed=true;roleRevealing=false}if(m.type==="state"){let wasLobby=S.phase==="lobby",done=S.mineDone&&S.phase===m.s.phase;S=m.s;if(wasLobby&&S.phase!=="lobby"){roleViewed=false;roleRevealing=false}S.mineDone=done;render()}if(m.type==="private"){$("announce").textContent=m.text}
+   if(m.type==="detectiveResult"&&S.roles&&S.roles[myId]==="Detective"){setTimeout(()=>showDetectiveResult(m.text),0)}
+   if(m.type==="error")alert(m.text)});hostConn.on("close",()=>alert("Connection lost. If the moderator is still in the game, reopen the game and join again using the same room code and exactly the same player name."))});peer.on("error",e=>alert("Connection error: "+e.type))}
+$("roleBack").onclick=revealRoleOnce;
+$("roleBack").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();revealRoleOnce()}};
+$("showJoin").onclick=()=>$("joinBox").classList.toggle("hide");$("create").onclick=()=>{myName=$("nm").value.trim();if(!myName)return alert("Enter your name.");host()};$("join").onclick=()=>{myName=$("nm").value.trim();if(!myName)return alert("Enter your name.");guest()};$("start").onclick=()=>{if(S.players.length<4)return alert("At least 4 players are required.");if(!roles())return;roleViewed=false;roleRevealing=false;S.day=1;S.hasHadNight=false;S.lastNightDeaths=[];S.roleSeen={};S.phase="day";S.announcement="Day 1. Reveal your role card once, then discuss. The moderator starts the first night when ready.";sync()};
+$("noKill").onclick=null;
+$("noKill").addEventListener("click",e=>{
+ e.preventDefault();
+ e.stopPropagation();
+ if(!isHost)return;
+ startNight();
+});
+})();
+
+
+window.addEventListener("beforeunload",function(e){
+ if(S && S.phase && S.phase!=="lobby" && S.phase!=="ended"){
+   e.preventDefault();
+   e.returnValue="The game will end or you may lose your connection if you refresh or leave this page.";
+   return e.returnValue;
+ }
+});
+</script></body></html>
