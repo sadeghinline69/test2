@@ -1,313 +1,822 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mafia Moderator</title><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Railway Rivals</title>
 <style>
-body{margin:0;background:#101217;color:#f5f5f5;font:16px system-ui}.w{max-width:720px;margin:auto;padding:18px}.c{background:#1b2029;border:1px solid #333b49;border-radius:18px;padding:17px;margin:12px 0}.hide{display:none!important}
-button,input,select{font:inherit;min-height:48px;border-radius:11px;border:1px solid #414a59;padding:9px 12px}input,select{width:100%;box-sizing:border-box;background:#11151b;color:white}button{font-weight:800;cursor:pointer}.red{background:#cf4545;color:white}.green{background:#278858;color:white}.amber{background:#b87518;color:white}
-.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}.p{display:flex;justify-content:space-between;padding:11px;border-bottom:1px solid #343c49}.dead{opacity:.45;text-decoration:line-through}.code{text-align:center;font-size:30px;font-weight:900;letter-spacing:.12em}.role{text-align:center;font-size:28px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.note{background:#29313e;padding:12px;border-radius:11px}.muted{color:#aeb7c5}.phase{font-weight:900;text-transform:uppercase;letter-spacing:.1em}
-.playerNameTop{font-size:22px;font-weight:900;margin:0 0 12px;text-align:center;color:#fff}
-.roleBack{min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:linear-gradient(145deg,#202733,#11151c);border:2px solid #566174;border-radius:18px;cursor:pointer;user-select:none}
-.roleBack .mark{font-size:58px}.roleBack .tap{font-weight:900}
-.roleReveal{min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px;border-radius:18px;background:#262d39}
-.roleReveal .bigRole{font-size:31px;font-weight:900;margin:8px 0}.roleReveal .desc{color:#c5cbd4;max-width:420px}
-.roleLocked{min-height:120px;display:flex;align-items:center;justify-content:center;text-align:center;color:#aeb7c5;background:#171b22;border:1px dashed #424b5a;border-radius:16px;padding:18px}@media(max-width:420px){.grid{grid-template-columns:1fr}}
-</style></head><body><main class="w">
-<div style="text-align:right;color:#aeb7c5;font-size:13px;font-weight:800;margin-bottom:4px">Version 21</div><section id="home"><h1>🕵️ Mafia</h1><p class="muted">Online Mafia with an automated moderator.</p><div class="c"><label>Your name</label><input id="nm" maxlength="24"><div class="row" style="margin-top:10px"><button id="create" class="red">Create room</button><button id="showJoin">Join room</button></div><div id="joinBox" class="hide"><input id="codeIn" maxlength="6" placeholder="Room code" style="margin-top:10px"><div class="muted" style="font-size:12px;margin-top:7px">Reconnecting? Enter the same room code and exactly the same player name.</div><button id="join" class="green" style="width:100%;margin-top:8px">Join</button></div></div></section>
-<section id="lobby" class="hide"><div class="c"><div class="muted">ROOM CODE</div><div id="code" class="code"></div></div><div class="c"><h2>Players</h2><div id="roster"></div></div><div id="setup" class="c hide"><h2>Classic scenario</h2><div class="row"><label>Mafia<select id="mc"><option>1</option><option selected>2</option><option>3</option></select></label><label>Doctor<select id="dc"><option selected>1</option><option>0</option></select></label><label>Detective<select id="xc"><option selected>1</option><option>0</option></select></label></div><button id="start" class="red" style="width:100%;margin-top:12px">Start game</button></div><div id="wait" class="c hide">Waiting for the host…</div></section>
-<section id="game" class="hide"><div id="playerNameTop" class="playerNameTop"></div><div id="playerRoleTop" style="text-align:center;font-size:14px;font-weight:800;margin-top:-8px;margin-bottom:12px;min-height:20px"></div><div class="c"><div id="phase" class="phase"></div><div id="day"></div></div>
-<div id="roleCardPanel" class="c">
- <div id="roleBack" class="roleBack" role="button" tabindex="0" aria-label="Reveal your role once"><div class="mark">🎴</div><div class="tap">Tap to reveal your role</div><div class="muted">You can reveal it only once.</div></div>
- <div id="roleReveal" class="roleReveal hide"><div class="muted">YOUR ROLE</div><div id="role" class="bigRole"></div><div id="help" class="desc"></div><div class="muted" style="margin-top:12px">This card will hide automatically.</div></div>
- <div id="roleLocked" class="roleLocked hide">🔒 Your role card has already been viewed.</div>
-</div><div id="announce" class="note"></div>
-<div id="night" class="c hide"><h2 id="actionTitle"></h2><div id="targets" class="grid"></div><div id="done" class="note hide">Action recorded. Wait for the other players.</div></div>
-<div id="dayCard" class="c hide"><h2>☀️ Daytime</h2><p><b>Talk and vote without the app.</b> After the vote, the host taps the player who received the most votes to mark them dead.</p><div id="players"></div><div id="hostKill" class="hide"><h3 id="dayHostTitle">Moderator controls</h3><div id="kills" class="grid"></div><button id="noKill" type="button" class="amber" style="width:100%;margin-top:9px">🌙 Start Night</button></div></div>
-<div id="end" class="c hide"><h1 id="winner"></h1><p>Game over.</p></div></section>
-</main><script>
-(()=>{const $=x=>document.getElementById(x);let peer,hostConn,isHost=false,room="",myId="",myName="",conns=new Map();
-let S={players:[],phase:"lobby",day:0,roles:{},alive:{},actions:{},announcement:"",winner:""};
-let roleViewed=false,roleRevealing=false,roleHideTimer=null;
-const sections=["home","lobby","game"];function show(x){sections.forEach(y=>$(y).classList.toggle("hide",x!==y))}
-const alive=()=>S.players.filter(p=>S.alive[p.id]), me=()=>S.players.find(p=>p.id===myId);
-function send(c,m){try{if(c&&c.open)c.send(m)}catch(e){}}
-function viewFor(id){return{...S,roles:{[id]:S.roles[id]},actions:{}}}
-function sync(){if(!isHost)return;conns.forEach((c,id)=>send(c,{type:"state",s:viewFor(id)}));render()}
-function render(){if(S.phase==="lobby"){show("lobby");$("roster").innerHTML=S.players.map((p,i)=>`<div class="p"><span>${i+1}. ${esc(p.name)}</span><b>${p.id===myId?"You":""}</b></div>`).join("");$("setup").classList.toggle("hide",!isHost);$("wait").classList.toggle("hide",isHost);return}
-show("game");let r=S.roles[myId]||"Citizen",a=!!S.alive[myId];
-$("playerNameTop").textContent=(me()&&me().name)||myName||"Player";
-$("playerRoleTop").textContent=(roleViewed&&S.roles&&S.roles[myId])?S.roles[myId]:"";
-$("phase").textContent=S.phase;$("day").textContent=(S.phase==="night"?"Night ":"Day ")+S.day;
-$("role").textContent=r;
-$("help").textContent=r==="Mafia"?"You are on the Mafia team. At night, choose a player to eliminate.":r==="Doctor"?"You are a Citizen. At night, choose one living player to protect.":r==="Detective"?"You are a Citizen. At night, choose one living player to investigate.":"You are a Citizen. Discuss during the day and try to identify the Mafia.";
-renderRoleCard();
-if(!detectiveResultActive)$("announce").textContent=S.announcement||"";
-announcePhaseOnce();
-$("night").classList.toggle("hide",S.phase!=="night"||!a);$("dayCard").classList.toggle("hide",S.phase!=="day");$("end").classList.toggle("hide",S.phase!=="ended");if(S.phase==="night"&&a)nightUI(r);if(S.phase==="day")dayUI();if(S.phase==="ended"){$("winner").textContent=S.winner+" wins!";announceWinnerOnce()}}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function renderRoleCard(){
- if(S.phase==="lobby")return;
- $("roleBack").classList.toggle("hide",roleViewed||roleRevealing);
- $("roleReveal").classList.toggle("hide",!roleRevealing);
- $("roleLocked").classList.toggle("hide",!roleViewed||roleRevealing);
-}
-function revealRoleOnce(){
- if(roleViewed||roleRevealing||S.phase==="lobby"||S.phase==="ended")return;
- roleRevealing=true;renderRoleCard();
- clearTimeout(roleHideTimer);
- roleHideTimer=setTimeout(()=>{roleRevealing=false;roleViewed=true;renderRoleCard();render();if(isHost){S.roleSeen=S.roleSeen||{};S.roleSeen[myId]=true;sync()}else send(hostConn,{type:"roleSeen"})},4000);
-}
-function nightUI(r){
- $("actionTitle").textContent="Choose someone";
- let done=!!S.mineDone;
- $("done").classList.toggle("hide",!done);
- $("targets").classList.toggle("hide",done);
- if(done)return;
+:root{--ink:#17222b;--paper:#efe5c8;--gold:#c99539;--wood:#4b291b;--blue:#17689b}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Georgia,"Times New Roman",serif;background:#10161a;color:#241b14}
+button,select,input{font:inherit}.hidden{display:none!important}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 50% 20%,#34444d,#10161a 70%);z-index:-1}
+.screen{min-height:100dvh}.menu{display:grid;place-items:center;padding:28px}
+.panel{width:min(760px,94vw);background:linear-gradient(#f8efda,#dbc89e);border:4px solid #8a5a2b;border-radius:24px;box-shadow:0 18px 70px #000b,inset 0 0 0 2px #e6c56e;padding:26px}
+.logo{text-align:center;font-size:clamp(38px,8vw,78px);line-height:.9;color:#7f1f1d;text-shadow:0 2px #f7dc9a,0 5px #5d301d;font-weight:900;letter-spacing:-2px}
+.subtitle{text-align:center;letter-spacing:4px;margin:12px 0 25px;color:#594326}
+.row{display:flex;gap:12px;flex-wrap:wrap}.field{flex:1;min-width:170px;margin:10px 0}.field label{display:block;font-weight:bold;margin-bottom:5px}
+select,input{width:100%;padding:12px;border:2px solid #9e7c49;border-radius:10px;background:#fffaf0}
+.btn{border:0;border-radius:14px;padding:13px 18px;font-weight:bold;cursor:pointer;background:linear-gradient(#e4b75c,#a8681f);color:#241507;box-shadow:0 4px 0 #704013,0 8px 16px #0003}.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #704013}.primary{font-size:20px;width:100%;margin-top:16px}.small{padding:8px 12px}
+#game{height:100dvh;overflow:hidden;background:#111;display:grid;grid-template-columns:190px 1fr 170px;grid-template-rows:1fr 148px}
+.sidebar{background:linear-gradient(135deg,#201a22,#100d12);color:#eee;border-right:3px solid #8d622e;padding:10px;overflow:auto}
+.playerCard{background:linear-gradient(135deg,#46323e,#241b25);border:2px solid #8d6d45;border-radius:12px;padding:9px;margin-bottom:8px;box-shadow:inset 0 0 15px #0008}
+.playerCard.active{outline:3px solid #f3c64e}.pname{font-weight:bold}.stats{display:flex;justify-content:space-between;font-family:Arial;margin-top:6px;font-size:13px}
+.mapWrap{position:relative;overflow:hidden;background:#c7bea6}
+#map{position:absolute;inset:0;width:100%;height:100%;background:
+radial-gradient(circle at 50% 50%,transparent 0 60%,#5e4a3030 100%),
+linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
+#map:after{content:"";position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(8deg,#0000 0 18px,#6f654f0b 19px 20px)}
+.route{position:absolute;height:10px;transform-origin:left center;border-radius:5px;cursor:pointer;z-index:2;filter:drop-shadow(0 1px 1px #0008)}
+.route:before{content:"";position:absolute;inset:1px;background:repeating-linear-gradient(90deg,#ffffff44 0 9px,#0005 10px 12px);border-radius:4px}
+.route:hover{outline:3px solid #ffe57a;z-index:5}.route.claimed{height:13px;outline:1px solid #111}
+.city{position:absolute;transform:translate(-50%,-50%);z-index:6;text-align:center;pointer-events:none}
+.dot{width:9px;height:9px;border-radius:50%;background:#372d24;border:2px solid #e9d8a9;margin:auto;box-shadow:0 1px 2px #000}
+.city span{display:block;font:bold 10px Arial;color:#1c1a17;text-shadow:0 1px #eee;white-space:nowrap;margin-top:1px}
+.city.glow .dot{width:20px;height:20px;background:#ffe11a;box-shadow:0 0 8px 4px #fff,0 0 25px 10px #5eff44}
+.turnBanner{display:none!important;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;background:#20170edb;color:#fff3ca;padding:7px 18px;border:1px solid #c99b4d;border-radius:20px;font-weight:bold}
+.toast{position:absolute;left:50%;top:18%;transform:translate(-50%,-50%);z-index:30;color:white;background:#19120ddd;border:2px solid #d8ad58;border-radius:16px;padding:12px 20px;font-size:20px;animation:pop .25s}
+@keyframes pop{from{transform:translate(-50%,-50%) scale(.7);opacity:0}}
+.market{background:linear-gradient(#33261c,#17120e);border-left:3px solid #8d622e;padding:8px;color:#f6e8c9;overflow:auto}
+.market h3{margin:3px;text-align:center}.card{height:70px;border-radius:8px;border:3px solid #e8d7a5;background:#f7ecd0;margin:6px 0;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 2px 5px #0008;cursor:pointer;font:bold 12px Arial;color:#111}
+.card .train{width:80%;height:25px;border-radius:5px;border:2px solid #372b20;box-shadow:inset 0 -5px #0003}
+.card.wild{background:linear-gradient(135deg,#ffd85b,#ef6767,#6fd0ff,#71d878,#bd77dd)}
+.deck{background:repeating-linear-gradient(45deg,#c4a878,#c4a878 5px,#e5d3a5 6px 10px)}
+.bottom{grid-column:1/4;background:linear-gradient(#74451e,#2b1b12);border-top:4px solid #b68037;color:#fff;display:grid;grid-template-columns:240px 1fr 220px;gap:10px;padding:8px}
+.ticketsMini{display:flex;gap:5px;overflow-x:auto}.ticket{min-width:108px;background:#f4ead0;color:#3a2818;border:2px solid #b89055;border-radius:8px;padding:6px;font-size:10px;box-shadow:0 3px 5px #0008}.ticket b{font-size:12px}.ticket .value{float:right;font-size:20px;color:#8b291e}
+.hand{display:flex;align-items:end;justify-content:center;gap:3px;overflow:auto}.handCard{width:54px;height:72px;border:2px solid #e8d7a5;border-radius:6px;background:#f6ecd3;color:#111;flex:0 0 auto;text-align:center;padding-top:7px;font:11px Arial}.swatch{height:25px;margin:5px;border-radius:4px;border:1px solid #333}
+.actions{display:flex;flex-direction:column;justify-content:center;gap:7px}.actions .btn{padding:8px}
+.modal{position:fixed;inset:0;background:#000b;z-index:100;display:grid;place-items:center;padding:15px}.modalBox{width:min(760px,96vw);max-height:90dvh;overflow:auto;background:linear-gradient(#f8efda,#dbc89e);border:4px solid #9b6a30;border-radius:18px;padding:18px;box-shadow:0 20px 70px #000}
+.ticketChoices{display:flex;gap:10px;flex-wrap:wrap}.ticketChoice{flex:1;min-width:180px;min-height:120px;background:#f8efd8;border:3px solid #a98650;border-radius:12px;padding:12px;cursor:pointer}.ticketChoice.selected{outline:5px solid var(--tc,#3b9b45);transform:translateY(-4px)}
+.note{font:14px Arial;color:#5d4934}.version{text-align:center;font:12px Arial;color:#7c694c;margin-top:14px}
+@media(max-width:850px){#game{grid-template-columns:120px 1fr 112px;grid-template-rows:1fr 130px}.sidebar,.market{padding:4px}.playerCard{padding:5px}.city span{font-size:7px}.route{height:8px}.bottom{grid-template-columns:145px 1fr 130px;padding:4px}.card{height:52px}.handCard{width:40px;height:60px}.ticket{min-width:92px}.btn{font-size:12px;padding:7px}.stats{font-size:10px}}
+@media(max-width:620px) and (orientation:portrait){#game{height:100dvh;grid-template-columns:86px 1fr 84px;grid-template-rows:1fr 118px}.logo{font-size:44px}.playerCard{font-size:10px}.bottom{grid-template-columns:100px 1fr 95px}.ticket{min-width:82px;font-size:8px}.ticket b{font-size:9px}.handCard{width:34px;font-size:8px}.city span{font-size:6px}.market h3{font-size:11px}}
 
- let ps=alive().filter(p=>p.id!==myId||r==="Doctor"||r==="Citizen");
- $("targets").innerHTML="";
+#rotateNotice{display:none;position:fixed;inset:0;z-index:9999;background:radial-gradient(circle,#3a2a1c,#100d0a);color:#f6dfaa;text-align:center;place-items:center;padding:30px;font-family:Arial}#rotateNotice .rot{font-size:64px;display:block;margin-bottom:14px}@media(max-width:700px) and (orientation:portrait){#game:not(.hidden)~#rotateNotice{display:grid}}
 
- ps.forEach(p=>{
-   let b=document.createElement("button");
-   b.type="button";
-   b.textContent=p.name;
-   b.onclick=()=>act(r,p.id);
-   $("targets").appendChild(b);
- });
+/* Version 4: map-first landscape layout */
+#game{grid-template-columns:132px 1fr 138px;grid-template-rows:1fr!important}
+.sidebar{padding:5px}.playerCard{padding:5px;margin-bottom:5px}.stats{font-size:11px}
+.market{padding:5px;display:flex;flex-direction:column;min-height:0}.market h3{font-size:12px;margin:1px}
+.market .card{height:48px;margin:3px 0}.market .destSide{margin-top:4px;border-top:1px solid #8d622e;padding-top:4px;min-height:0;overflow:auto}
+.market .destSide .ticket{min-width:0;width:100%;margin:3px 0;font-size:8px;padding:4px}.market .destSide .ticket b{font-size:9px}.market .destSide .ticket .value{font-size:16px}
+.bottom{position:absolute;left:140px;right:146px;bottom:4px;z-index:25;background:transparent;border:0;display:block;padding:0;pointer-events:none}
+.bottom>div:first-child,.bottom>.actions{display:none!important}.bottom>div:nth-child(2){display:flex;justify-content:center}.bottom>div:nth-child(2)>b{display:none}
+.hand{background:#21150dcc;border:1px solid #b68037;border-radius:10px;padding:3px 7px;max-width:70%;pointer-events:auto;gap:2px;overflow:visible}
+.handCard{width:38px;height:47px;padding-top:2px;font-size:8px}.swatch{height:17px;margin:2px}
+.mapWrap{min-width:0}.city span{font-size:9px;background:#eadfbccc;padding:1px 3px;border-radius:4px}.dot{width:11px;height:11px}
+.route{height:12px;border:2px solid #4b4034;box-shadow:0 0 0 1px #eadfbd,0 2px 3px #0008;opacity:.96}
+.route:before{background:repeating-linear-gradient(90deg,#fff7 0 7px,#2b211a 8px 10px,#fff0 11px 13px)}
+.route:hover{outline:4px solid #ffe57a;filter:brightness(1.2)}
+.mapTools{display:flex;gap:3px;margin-top:auto}.mapTools .btn{font-size:9px;padding:5px 3px;flex:1}
+@media(max-width:850px){#game{grid-template-columns:92px 1fr 98px;grid-template-rows:1fr!important}.bottom{left:98px;right:104px}.market .card{height:38px}.city span{font-size:7px}.route{height:9px}.handCard{width:31px;height:40px}.swatch{height:13px}.playerCard{font-size:9px}.stats{font-size:8px}}
 
- let go=document.createElement("button");
- go.type="button";
- go.textContent="☀ Go to Day";
- go.style.marginTop="14px";
- go.onclick=()=>passNight(r);
- $("targets").appendChild(go);
+/* Version 4 — curved segmented railway map */
+#game{grid-template-columns:132px 1fr 138px!important;grid-template-rows:1fr!important}
+.sidebar{position:relative;padding-bottom:128px}
+#leftTickets{position:absolute;left:5px;right:5px;bottom:5px;max-height:120px;overflow:auto;border-top:1px solid #8d622e;padding-top:4px}
+#leftTickets h3{font-size:10px;color:#e9c26a;margin:2px;text-align:center}
+#leftTickets .ticket{width:100%;min-width:0;margin:3px 0;font-size:7px;padding:3px;cursor:pointer}
+#leftTickets .ticket b{font-size:8px}#leftTickets .ticket .value{font-size:14px}
+.market .destSide{display:none!important}
+#mapSvg{position:absolute;inset:0;width:100%;height:100%;z-index:2;overflow:visible}
+.routePiece{stroke:#342a21;stroke-width:.32;vector-effect:non-scaling-stroke;cursor:pointer;filter:drop-shadow(0 .45px .35px #0008)}
+.routePieceInner{pointer-events:none;stroke:#ffffff55;stroke-width:.13;vector-effect:non-scaling-stroke}
+.routeHit{fill:none;stroke:transparent;stroke-width:4;vector-effect:non-scaling-stroke;cursor:pointer}
+.city{z-index:8}.city span{font-size:8px;background:#f0e5c9e8;border:1px solid #8e8065;padding:1px 3px;box-shadow:0 1px 1px #fff6}
+.dot{width:10px;height:10px;background:#62594d;border:2px solid #f3e4bd;box-shadow:0 0 0 1px #40372e,0 1px 3px #000}
+.city.glow .dot{width:19px;height:19px;background:#5dff45;border-color:#fff;box-shadow:0 0 7px 4px #fff,0 0 20px 8px #5dff45;transition:background .28s ease,box-shadow .28s ease}
+.ticketModalMap{background:transparent!important;pointer-events:none!important;align-items:end!important;padding:0 150px 72px 140px!important}
+.ticketModalMap .modalBox{pointer-events:auto;width:min(720px,75vw)!important;max-height:145px!important;padding:7px 10px!important;border-width:2px!important;border-radius:12px!important;overflow:hidden!important}
+.ticketModalMap h2{font-size:15px;margin:0 0 2px}.ticketModalMap p{font-size:10px;margin:1px 0 5px}
+.ticketModalMap .ticketChoices{flex-wrap:nowrap;gap:6px}.ticketModalMap .ticketChoice{min-width:0;min-height:68px;padding:5px;border-width:2px}
+.ticketModalMap .ticketChoice h3{font-size:10px;margin:1px}.ticketModalMap .ticketChoice .value{font-size:17px}.ticketModalMap .ticketChoice>div[style*="font-size:24px"]{display:none}
+.ticketModalMap .ticketChoice div[style*="height:3px"]{margin:3px 12px!important}
+.ticketModalMap .primary{position:absolute;right:12px;bottom:8px;width:auto;margin:0;padding:6px 16px;font-size:11px}
+.ticketModalMap .modalBox{position:relative;padding-right:90px!important}
+@media(max-width:850px){#game{grid-template-columns:92px 1fr 98px!important}.sidebar{padding-bottom:95px}#leftTickets{max-height:90px}.ticketModalMap{padding:0 104px 55px 98px!important}.ticketModalMap .modalBox{width:82vw!important;max-height:112px!important}.ticketModalMap .ticketChoice{min-height:52px;padding:3px}.ticketModalMap .ticketChoice h3{font-size:8px}}
+
+/* Version 5 — ONLY Destination Ticket chooser changed from Version 4 */
+.sidebar{padding-bottom:5px;display:flex;flex-direction:column;min-height:0}
+#players{flex:0 0 auto}
+#leftTickets{position:static;left:auto;right:auto;bottom:auto;max-height:120px;flex:0 0 auto;margin-top:auto;overflow:auto;border-top:1px solid #8d622e;padding-top:4px}
+#ticketModal{position:absolute!important;left:5px!important;top:auto!important;right:auto!important;bottom:5px!important;width:122px!important;height:auto!important;inset:auto auto 5px 5px!important;background:transparent!important;padding:0!important;display:block!important;z-index:80!important;pointer-events:none!important}
+#ticketModal.hidden{display:none!important}
+#ticketModal .modalBox{pointer-events:auto!important;width:122px!important;max-height:calc(100dvh - 150px)!important;overflow:auto!important;padding:5px!important;border:2px solid #9b6a30!important;border-radius:9px!important;background:linear-gradient(#f8efda,#dbc89e)!important;box-shadow:0 6px 18px #0009!important}
+#ticketModal h2{font-size:10px!important;line-height:1.05;margin:0 0 2px!important;text-align:center}
+#ticketModal p{font:8px Arial!important;line-height:1.1;margin:0 0 4px!important;text-align:center}
+#ticketModal .ticketChoices{display:block!important}
+#ticketModal .ticketChoice{min-width:0!important;width:100%!important;min-height:0!important;margin:4px 0!important;padding:4px!important;border:2px solid #a98650!important;border-radius:7px!important;transform:none!important}
+#ticketModal .ticketChoice.selected{outline:3px solid var(--tc,#3b9b45)!important;background:#fff8df!important;transform:none!important}
+#ticketModal .ticketChoice h3{font-size:8px!important;line-height:1.05;margin:1px 0!important;text-align:left;padding-right:18px}
+#ticketModal .ticketChoice .value{font-size:15px!important;line-height:1;float:right;color:var(--tc,#8b291e)!important;font-weight:bold}
+#ticketModal .ticketChoice>div[style*="font-size:24px"]{display:none!important}
+#ticketModal .ticketChoice div[style*="height:3px"]{height:2px!important;margin:3px 8px!important}
+#ticketModal .primary{position:static!important;width:100%!important;margin:5px 0 0!important;padding:5px!important;font-size:10px!important}
+@media(max-width:850px){#ticketModal{width:84px!important;left:4px!important;bottom:4px!important}#ticketModal .modalBox{width:84px!important;max-height:calc(100dvh - 105px)!important;padding:3px!important}#ticketModal h2{font-size:8px!important}#ticketModal p{font-size:6px!important}#ticketModal .ticketChoice{padding:2px!important;margin:2px 0!important}#ticketModal .ticketChoice h3{font-size:6px!important;padding-right:12px}#ticketModal .ticketChoice .value{font-size:11px!important}#ticketModal .primary{font-size:8px!important;padding:3px!important}}
+
+/* Version 6 — destination tickets only: chooser stays left; kept tickets move onto map */
+#leftTickets{display:none!important}
+#ticketModal h2,#ticketModal p{display:none!important}
+#ticketModal .modalBox{padding-top:4px!important}
+.mapSavedTickets{position:absolute;left:7px;bottom:5px;z-index:26;display:flex;gap:4px;max-width:38%;overflow-x:auto;overflow-y:hidden;padding:2px;pointer-events:auto}
+.mapSavedTickets .ticket{min-width:92px;max-width:108px;margin:0;padding:4px 5px;font-size:7px;line-height:1.15;background:#f4ead0eF;border:2px solid #b89055;border-radius:7px;box-shadow:0 3px 7px #0008;cursor:pointer}
+.mapSavedTickets .ticket b{font-size:8px}.mapSavedTickets .ticket .value{font-size:14px}
+/* Keep the train-card hand to the right of the saved destination tickets. */
+.bottom{left:38%!important;right:146px!important}
+.hand{max-width:100%!important}
+/* During ticket choice, the left-side chooser is the only content below player cards. */
+#ticketModal{top:112px!important;bottom:auto!important}
+#ticketModal .modalBox{max-height:calc(100dvh - 120px)!important}
+@media(max-width:850px){.mapSavedTickets{left:4px;bottom:3px;max-width:40%}.mapSavedTickets .ticket{min-width:66px;max-width:78px;font-size:5px;padding:2px}.mapSavedTickets .ticket b{font-size:6px}.mapSavedTickets .ticket .value{font-size:10px}.bottom{left:40%!important;right:104px!important}#ticketModal{top:82px!important;bottom:auto!important}#ticketModal .modalBox{max-height:calc(100dvh - 88px)!important}}
+
+/* Version 12 — each kept Destination Ticket has its own persistent map-marker color */
+.mapSavedTickets .ticket{border-color:var(--ticket-color,#2f9e44)!important}
+.mapSavedTickets .ticket .value{color:var(--ticket-color,#2f9e44)!important;text-shadow:0 1px #fff}
+.mapSavedTickets .ticket.ticketTop{box-shadow:0 0 0 1px #fff7 inset,0 3px 7px #0008!important}
+/* Version 7 — compact stacked destination tickets + compact color cards */
+.mapSavedTickets{display:flex!important;align-items:flex-end!important;gap:0!important;max-width:42%!important;overflow:visible!important;height:51px!important;padding:2px!important}
+.mapSavedTickets .ticket{height:47px!important;min-height:47px!important;margin:0!important;overflow:hidden!important;position:relative!important;flex:0 0 auto!important}
+.mapSavedTickets .ticket.ticketUnder{width:25px!important;min-width:25px!important;max-width:25px!important;padding:2px!important;border-right-width:1px!important;border-radius:6px 0 0 6px!important;cursor:pointer!important}
+.mapSavedTickets .ticket.ticketUnder b,.mapSavedTickets .ticket.ticketUnder br,.mapSavedTickets .ticket.ticketUnder .destArrow{display:none!important}
+.mapSavedTickets .ticket.ticketUnder .value{float:none!important;display:block!important;width:100%!important;text-align:center!important;font-size:14px!important;line-height:39px!important;color:#8b291e!important;font-weight:bold!important}
+.mapSavedTickets .ticket.ticketTop{width:100px!important;min-width:100px!important;max-width:100px!important;padding:4px 5px!important;border-radius:7px!important;z-index:3!important}
+.mapSavedTickets .ticket.ticketTop .value{font-size:14px!important}
+.mapSavedTickets .ticket.ticketTop b{font-size:8px!important}
+.handCard{height:47px!important;padding:3px 2px!important;display:flex!important;flex-direction:column!important;justify-content:center!important}
+.handCard .swatch{height:27px!important;margin:1px 2px!important}
+.handCard .colorName{display:none!important}
+@media(max-width:850px){.mapSavedTickets{height:44px!important}.mapSavedTickets .ticket{height:40px!important;min-height:40px!important}.mapSavedTickets .ticket.ticketUnder{width:20px!important;min-width:20px!important;max-width:20px!important}.mapSavedTickets .ticket.ticketUnder .value{font-size:11px!important;line-height:32px!important}.mapSavedTickets .ticket.ticketTop{width:72px!important;min-width:72px!important;max-width:72px!important}.handCard{height:40px!important}.handCard .swatch{height:22px!important}}
+
+/* Version 16 — larger Destination Ticket action on left; no PLAYERS heading */
+.sidebar{display:flex!important;flex-direction:column!important;}
+.leftDestBtn{margin:8px 4px 4px!important;padding:11px 7px!important;font-size:12px!important;font-weight:800!important;line-height:1.15!important;min-height:48px!important;border:2px solid #d6aa55!important;box-shadow:0 3px 8px #0007!important;}
+#ticketModal{top:150px!important;}
+#ticketModal .modalBox{max-height:calc(100dvh - 158px)!important;}
+@media(max-width:850px){.leftDestBtn{margin:5px 2px 2px!important;padding:8px 3px!important;font-size:9px!important;min-height:40px!important}#ticketModal{top:128px!important}#ticketModal .modalBox{max-height:calc(100dvh - 134px)!important}}
+
+/* Version 25 — purple replaces navy; double-route rules; no claimable-route highlighting */
+.city span{display:none!important}
+/* Empty routes: midway between V17 subtle rails and V18 strong rails. */
+.routePiece{opacity:.76!important;filter:saturate(.82) brightness(1.06) drop-shadow(0 .35px .28px #0006)!important;stroke:#4b4034!important;stroke-width:.27!important;transition:filter .18s ease,stroke .18s ease,stroke-width .18s ease,opacity .18s ease}
+.routePieceInner{opacity:.78!important;stroke:#ffffff55!important;stroke-width:.10!important}
+.routeSeg:not(.claimedSeg):hover .routePiece{filter:brightness(1.18) drop-shadow(0 .55px .45px #0009)!important}
+/* Claimed routes: each segment reads as a heavy, dark-edged railway wagon. */
+.routeSeg.claimedSeg .routePiece{opacity:1!important;filter:saturate(1.45) brightness(.88) contrast(1.25) drop-shadow(0 0 .55px #fff) drop-shadow(0 1px .7px #000)!important;stroke:#15100d!important;stroke-width:.48!important;stroke-dasharray:.7 .18!important}
+.routeSeg.claimedSeg .routePieceInner{opacity:1!important;stroke:#ffffffc7!important;stroke-width:.15!important}
+.routeWheel{display:none;fill:#17120f;stroke:#eadfbd;stroke-width:.08;vector-effect:non-scaling-stroke;pointer-events:none}
+.routeSeg.claimedSeg .routeWheel{display:block}
+
+/* Destination Tickets intentionally show points only; endpoints are communicated by map highlights. */
+.ticket b,.ticket .destArrow,.ticketChoice h3{display:none!important}
+#ticketModal .ticketChoice{min-height:36px!important;text-align:center!important}
+#ticketModal .ticketChoice .value{float:none!important;display:block!important;text-align:center!important;font-size:18px!important}
+.mapSavedTickets .ticket.ticketTop{width:48px!important;min-width:48px!important;max-width:48px!important}
+.mapSavedTickets .ticket.ticketTop .value{float:none!important;display:block!important;text-align:center!important;font-size:18px!important;line-height:37px!important}
+
+/* Version 23 — occupied trains are ~1.8x the thickness of empty rails. */
+.routeSeg.claimedSeg .routePiece{stroke-width:.55!important;filter:saturate(1.55) brightness(.86) contrast(1.3) drop-shadow(0 0 .65px #fff) drop-shadow(0 1.15px .85px #000)!important}
+.routeSeg.claimedSeg .routePieceInner{stroke-width:.18!important}
+
+/* Version 23 — claim flow and route selection */
+.handCard{cursor:pointer;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}
+.handCard.claimColorSelected{transform:translateY(-7px) scale(1.06);border-color:#fff!important;box-shadow:0 0 0 3px #ffd65a,0 0 16px 5px #ffd65aaa!important}
+.routeSeg.claimEligible .routePiece{filter:saturate(1.2) brightness(1.18) drop-shadow(0 0 .7px #fff) drop-shadow(0 0 1.1px #ffd85b)!important;stroke:#fff1a0!important;stroke-width:.38!important}
+.routeSeg.claimIneligible{opacity:.48}
+.routeSeg.claimedSeg{opacity:1!important}
+
+/* Version 25: do not visually reveal which routes are legal after color selection. */
+.routeSeg.claimEligible .routePiece,.routeSeg.claimIneligible .routePiece{opacity:inherit!important}
+.routeSeg.claimIneligible{opacity:1!important}
+
+/* Version 26 — compact vertical Train Cards, reserved map space, 1.4x claimed-route thickness */
+.mapWrap{
+  margin-bottom:38px!important;
 }
-function act(r,t){S.mineDone=true;if(isHost)record(myId,r,t);else send(hostConn,{type:"action",role:r,target:t});render()}
-function passNight(r){
- S.mineDone=true;
- if(isHost)record(myId,r,"__PASS__");
- else send(hostConn,{type:"action",role:r,target:"__PASS__"});
- render();
+
+/* Compact hand: narrow vertical color swatch with the quantity beside it. */
+.hand{
+  padding:2px 6px!important;
+  gap:3px!important;
+  align-items:center!important;
 }
-function record(id,r,t){
- if(S.phase!=="night"||!S.alive[id]||S.roles[id]!==r||!["Mafia","Doctor","Detective","Citizen"].includes(r))return;
- if(t===null)return;
- S.actions[id]={role:r,target:t};
- if(r==="Detective"&&t!=="__PASS__"){
-   const idx=S.players.findIndex(p=>p.id===t)+1;
-   const target=S.players.find(p=>p.id===t);
-   const team=S.roles[t]==="Mafia"?"Mafia":"Citizen";
-   const txt=`Player number ${idx} (${target.name}) is ${team}.`;
-   if(id===myId&&isHost){
-     showDetectiveResult(txt);
-   }else{
-     const detectiveConn=conns.get(id);
-     if(detectiveConn)send(detectiveConn,{type:"detectiveResult",text:txt});
-   }
- }
- if(required().every(x=>S.actions[x]))setTimeout(resolveNight,500);
- sync();
- if(S.pendingDetective){const q=S.pendingDetective;delete S.pendingDetective;send(conns.get(q.id),{type:"detectiveResult",text:q.text})}
+.handCard{
+  width:42px!important;
+  height:32px!important;
+  min-height:32px!important;
+  padding:2px 3px!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  font-size:9px!important;
+  border-radius:6px!important;
 }
-let detectiveResultTimer=null;
-let detectiveResultActive=false;
-function showDetectiveResult(txt){
- if(!S.roles||S.roles[myId]!=="Detective")return;
- if(detectiveResultTimer)clearTimeout(detectiveResultTimer);
- detectiveResultActive=true;
- const box=$("announce");
- box.textContent=txt;
- detectiveResultTimer=setTimeout(()=>{
-   detectiveResultActive=false;
-   box.textContent=S.announcement||("Night "+S.day+" begins.");
- },5000);
+.handCard b{
+  order:2;
+  min-width:16px;
+  font-size:9px!important;
+  line-height:1!important;
+  white-space:nowrap;
 }
-function required(){return alive().map(p=>p.id)}
-function resolveNight(){if(!isHost||S.phase!=="night")return;let mv={};Object.values(S.actions).filter(a=>a.role==="Mafia").forEach(a=>mv[a.target]=(mv[a.target]||0)+1);let kill=Object.keys(mv).sort((a,b)=>mv[b]-mv[a])[0],doc=Object.values(S.actions).find(a=>a.role==="Doctor");let text="The city wakes up. ";S.lastNightDeaths=[];if(kill&&(!doc||doc.target!==kill)){S.alive[kill]=false;S.lastNightDeaths.push(kill);text+=S.players.find(p=>p.id===kill).name+" died during the night."}else text+="Nobody died during the night.";S.actions={};S.phase="day";S.announcement=text;win();sync()}
-function dayUI(){
- $("players").innerHTML=S.players.map(p=>`<div class="p ${S.alive[p.id]?"":"dead"}"><span>${esc(p.name)}</span><b>${S.alive[p.id]?"Alive":"Dead"}</b></div>`).join("");
- $("hostKill").classList.toggle("hide",!isHost);
- if(isHost){
-   $("dayHostTitle").textContent="Moderator controls";
-   $("noKill").textContent="🌙 Start Night";
-   $("noKill").disabled=false;
-   $("kills").innerHTML="";
-   alive().forEach(p=>{
-     let b=document.createElement("button");
-     b.type="button";
-     b.textContent="☠ Eliminate "+p.name;
-     b.disabled=!everyoneSawRole();
-     b.onclick=()=>eliminate(p.id);
-     $("kills").appendChild(b);
-   });
- }
+.handCard .swatch{
+  order:1;
+  width:15px!important;
+  min-width:15px!important;
+  height:25px!important;
+  margin:0!important;
+  border-radius:4px!important;
 }
-function everyoneSawRole(){S.roleSeen=S.roleSeen||{};return alive().every(p=>S.roleSeen[p.id])}
-function requireEveryoneSawRole(){
- if(everyoneSawRole())return true;
- const w=alive().filter(p=>!S.roleSeen[p.id]).map(p=>p.name);
- let msg="You cannot start the night yet. Every player must select and reveal their role card before the game can go to the night phase.";
- if(w.length)msg+="\n\nStill waiting for: "+w.join(", ");
- alert(msg);
+.handCard.claimColorSelected{
+  transform:translateY(-4px) scale(1.04)!important;
+}
+
+/* Claimed wagons are only slightly thicker than empty wagons. */
+.routeSeg.claimedSeg .routePiece{
+  stroke-width:.34!important;
+  transform:scaleY(1.08);
+  transform-box:fill-box;
+  transform-origin:center;
+}
+.routeSeg.claimedSeg .routePieceInner{
+  stroke-width:.12!important;
+  transform:scaleY(1.08);
+  transform-box:fill-box;
+  transform-origin:center;
+}
+.routeSeg.claimedSeg .routeWheel{
+  transform:scale(1.03);
+  transform-box:fill-box;
+  transform-origin:center;
+}
+
+@media(max-width:850px){
+  .mapWrap{margin-bottom:32px!important}
+  .handCard{width:36px!important;height:28px!important;min-height:28px!important;padding:1px 2px!important}
+  .handCard .swatch{width:13px!important;min-width:13px!important;height:21px!important}
+  .handCard b{font-size:8px!important;min-width:14px}
+}
+
+
+/* Version 27: 3- and 4-wagon routes use longer, closer wagons where route geometry allows. */
+.routeSeg[data-len="3"] .routePiece,
+.routeSeg[data-length="3"] .routePiece,
+.routeSeg[data-len="4"] .routePiece,
+.routeSeg[data-length="4"] .routePiece{
+  transform-box:fill-box;
+  transform-origin:center;
+}
+
+
+/* Version 28 — clean top area; only transient warnings remain visible. */
+.topbar .turn,
+.topbar .status,
+.topbar .message,
+.topbar .instruction,
+#turnLabel,#turnText,#statusText,#messageText,#instructionText,
+.turnLabel,.turnText,.statusText,.messageText,.instructionText{
+  display:none!important;
+}
+
+/* Keep Destination Tickets and Train Cards on one horizontal bottom level. */
+.bottomDock,.bottomBar,.handArea,.playerBottom{
+  align-items:flex-end!important;
+}
+.ticketStack,.destStack,.destinationStack,.keptTickets{
+  align-self:flex-end!important;
+  margin-bottom:0!important;
+}
+.hand{
+  align-self:flex-end!important;
+  margin-bottom:0!important;
+}
+
+
+/* Version 29 — richer train-card artwork and visible draw-to-hand animation */
+.handCard,.marketCard,.trainCard{
+  position:relative!important;
+  overflow:hidden!important;
+  box-shadow:0 2px 5px rgba(0,0,0,.28)!important;
+}
+.handCard .swatch,.marketCard .swatch,.trainCard .swatch{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.handCard .swatch::after,.marketCard .swatch::after,.trainCard .swatch::after{
+  content:"🚂";
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  filter:drop-shadow(0 1px 1px rgba(255,255,255,.75)) drop-shadow(0 1px 1px rgba(0,0,0,.5));
+}
+.drawFlyCard{
+  position:fixed;
+  z-index:99999;
+  width:44px;
+  height:64px;
+  border:3px solid rgba(255,255,255,.95);
+  border-radius:8px;
+  box-shadow:0 8px 22px rgba(0,0,0,.55);
+  pointer-events:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:25px;
+  transition:left .72s cubic-bezier(.2,.8,.2,1),top .72s cubic-bezier(.2,.8,.2,1),transform .72s cubic-bezier(.2,.8,.2,1),opacity .18s .62s;
+}
+.drawFlyCard::after{content:"🚂";filter:drop-shadow(0 1px 1px #fff)}
+.drawReveal{
+  position:fixed;
+  z-index:100000;
+  padding:5px 9px;
+  border-radius:8px;
+  background:rgba(20,20,20,.9);
+  color:white;
+  font:800 12px/1.1 system-ui,sans-serif;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  animation:revealPop 1.15s ease forwards;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+@keyframes revealPop{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+  18%,72%{opacity:1;transform:translate(-50%,-65%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-90%) scale(.9)}
+}
+
+
+/* Version 30 — sound cues + animated final scoring */
+#finalScoreShow{
+ position:fixed;inset:0;z-index:200000;background:rgba(14,18,22,.94);
+ display:none;align-items:center;justify-content:center;padding:18px;color:#fff;
+ font-family:system-ui,sans-serif;
+}
+#finalScoreShow.on{display:flex}
+.scoreStage{width:min(900px,96vw);max-height:92vh;overflow:auto;background:linear-gradient(145deg,#25303b,#11171d);
+ border:2px solid #c8a96b;border-radius:18px;padding:18px;box-shadow:0 20px 60px #000}
+.scoreStage h2{text-align:center;margin:0 0 12px;font-size:25px;letter-spacing:.5px}
+.scoreRows{display:grid;gap:10px}
+.scorePlayer{background:rgba(255,255,255,.07);border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.15)}
+.scorePlayer.leader{box-shadow:0 0 0 2px #f1c75b,0 0 24px rgba(241,199,91,.35)}
+.scoreHead{display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:16px}
+.scoreTotal{font-size:22px;min-width:56px;text-align:right}
+.scoreTrack{height:7px;background:#111;border-radius:10px;margin:7px 0;overflow:hidden}
+.scoreFill{height:100%;width:0;background:linear-gradient(90deg,#c8a96b,#ffe28a);transition:width .55s ease}
+.scoreEvent{min-height:24px;font-weight:800;font-size:13px;opacity:.95}
+.scoreDelta{display:inline-block;margin-left:8px;font-size:17px;animation:scorePop .55s ease}
+@keyframes scorePop{0%{transform:scale(.5);opacity:0}55%{transform:scale(1.25);opacity:1}100%{transform:scale(1)}}
+.scoreWinner{text-align:center;font-size:24px;font-weight:1000;margin-top:15px;animation:winnerPulse 1s ease infinite alternate}
+@keyframes winnerPulse{to{transform:scale(1.06);text-shadow:0 0 18px #ffd45d}}
+
+
+/* Version 31 — no persistent text above the board. Only invalid-railway warning is shown. */
+#turnBanner{display:none!important}
+#toast{
+  position:fixed!important;
+  top:10px!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  z-index:300000!important;
+  max-width:min(560px,88vw);
+  text-align:center;
+  font-size:15px!important;
+  padding:8px 15px!important;
+}
+
+</style></head>
+<body>
+<section id="menu" class="screen menu">
+<div class="panel">
+<div class="logo">RAILWAY<br>RIVALS</div><div class="subtitle">A CROSS-COUNTRY RAIL ADVENTURE</div>
+<div class="row"><div class="field"><label>Players</label><select id="numPlayers"><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+<div class="field"><label>Game</label><select><option>Local Game</option></select></div></div>
+<div id="names"></div>
+<button class="btn primary" onclick="startGame()">🚂 Start Journey</button>
+<p class="note">Original browser implementation based on the supplied gameplay rules. Artwork and interface are newly created.</p>
+<div class="version">Version 31</div>
+</div></section>
+
+<section id="game" class="screen hidden">
+<aside class="sidebar"><div id="players"></div><button id="leftDestBtn" class="btn leftDestBtn" onclick="drawTickets()">🎫 Destination Tickets</button></aside>
+<div id="ticketModal" class="modal ticketModalMap hidden"><div class="modalBox"><div id="ticketChoices" class="ticketChoices"></div><button class="btn primary" onclick="confirmTickets()">Choose</button></div></div>
+<main class="mapWrap"><div id="map"></div><div id="mapSavedTickets" class="mapSavedTickets"></div><div id="turnBanner" class="turnBanner"></div><div id="toast" class="toast hidden"></div></main>
+<aside class="market"><h3>TRAIN CARDS</h3><div id="market"></div><div class="card deck" onclick="drawBlind()">🎴 BLIND DRAW</div><div class="destSide"><h3>DESTINATIONS</h3><div id="sideTickets"></div></div><div class="mapTools"><button class="btn" onclick="showHelp()">?</button><button class="btn" onclick="location.reload()">⌂</button></div></aside>
+<footer class="bottom"><div><b>DESTINATIONS</b><div id="myTickets" class="ticketsMini"></div></div><div><b>YOUR HAND</b><div id="hand" class="hand"></div></div>
+<div class="actions"><button class="btn" onclick="drawTickets()">🎫 Destination Tickets</button><button class="btn" onclick="showHelp()">? Rules</button><button class="btn" onclick="location.reload()">Main Menu</button></div></footer>
+</section>
+
+<div id="finalModal" class="modal hidden"><div id="finalResults" class="modalBox"></div></div>
+<div id="help" class="modal hidden"><div class="modalBox"><h2>How to Play</h2><p>On your turn, do exactly one action: draw Train Car cards, claim one route, or draw Destination Tickets.</p><p>To claim a route, first tap a Train Card color in your hand, then tap the railway you want. If that railway cannot be claimed with the selected color, the game will warn you. Gray routes may use any single color. Locomotives are wild. With 2–3 players, only one route of a parallel pair may be claimed; with 4–5 players, both may be claimed, but by different players.</p><p>When any player ends a turn with 2 or fewer trains, every player (including that player) gets exactly one final turn. Then completed Destination Tickets add their printed value and incomplete ones subtract it. Route points: 1→1, 2→2, 3→4, 4→7, 5→10, 6→15.</p><button class="btn primary" onclick="document.getElementById('help').classList.add('hidden')">Back to Game</button></div></div>
+<script>
+const CITIES={"Vancouver":[8,8],"Seattle":[8,18],"Portland":[7,32],"San Francisco":[9,60],"Los Angeles":[14,79],"Calgary":[27,7],"Helena":[32,30],"Salt Lake City":[27,53],"Las Vegas":[23,68],"Phoenix":[31,80],"Winnipeg":[51,8],"Duluth":[58,27],"Denver":[44,50],"Santa Fe":[43,69],"El Paso":[48,84],"Omaha":[58,45],"Kansas City":[62,57],"Oklahoma City":[60,69],"Dallas":[61,81],"Houston":[65,91],"Sault Ste. Marie":[72,15],"Chicago":[70,42],"Saint Louis":[70,58],"Little Rock":[70,72],"New Orleans":[75,88],"Toronto":[81,28],"Pittsburgh":[82,46],"Nashville":[80,64],"Atlanta":[85,74],"Miami":[94,93],"Montreal":[91,14],"Boston":[96,27],"New York":[92,42],"Washington":[91,56],"Raleigh":[91,66],"Charleston":[93,75]}, ROUTES=[["Vancouver","Seattle","gray",1],["Vancouver","Calgary","gray",3],["Seattle","Portland","gray",1],["Seattle","Portland","gray",1],["Seattle","Helena","yellow",6],["Seattle","Helena","blue",6],["Portland","San Francisco","green",5],["Portland","San Francisco","purple",5],["Portland","Salt Lake City","blue",6],["San Francisco","Los Angeles","yellow",3],["San Francisco","Los Angeles","purple",3],["San Francisco","Salt Lake City","orange",5],["Los Angeles","Las Vegas","gray",2],["Los Angeles","Phoenix","gray",3],["Los Angeles","El Paso","black",6],["Calgary","Helena","gray",4],["Calgary","Winnipeg","#00b8d4",6],["Helena","Winnipeg","blue",4],["Helena","Duluth","orange",6],["Helena","Denver","green",4],["Helena","Salt Lake City","purple",3],["Salt Lake City","Denver","red",3],["Salt Lake City","Denver","yellow",3],["Salt Lake City","Las Vegas","orange",3],["Phoenix","Santa Fe","gray",3],["Phoenix","El Paso","gray",3],["Denver","Santa Fe","gray",2],["Denver","Omaha","purple",4],["Denver","Kansas City","black",4],["Denver","Kansas City","orange",4],["Denver","Oklahoma City","red",4],["Winnipeg","Duluth","black",4],["Winnipeg","Sault Ste. Marie","gray",6],["Duluth","Omaha","gray",2],["Duluth","Chicago","red",3],["Duluth","Sault Ste. Marie","gray",3],["Omaha","Chicago","blue",4],["Omaha","Kansas City","gray",1],["Kansas City","Saint Louis","blue",2],["Kansas City","Saint Louis","purple",2],["Kansas City","Oklahoma City","gray",2],["Oklahoma City","Dallas","gray",2],["Oklahoma City","Little Rock","gray",2],["Santa Fe","El Paso","gray",2],["Santa Fe","Oklahoma City","blue",3],["El Paso","Dallas","red",4],["El Paso","Houston","green",6],["Dallas","Houston","gray",1],["Dallas","Little Rock","gray",2],["Houston","New Orleans","gray",2],["Sault Ste. Marie","Toronto","gray",2],["Sault Ste. Marie","Montreal","black",5],["Chicago","Toronto","#00b8d4",4],["Chicago","Pittsburgh","orange",3],["Chicago","Pittsburgh","black",3],["Chicago","Saint Louis","green",2],["Chicago","Saint Louis","#00b8d4",2],["Saint Louis","Pittsburgh","green",5],["Saint Louis","Nashville","gray",2],["Saint Louis","Little Rock","gray",2],["Little Rock","Nashville","#00b8d4",3],["Little Rock","New Orleans","green",3],["New Orleans","Atlanta","yellow",4],["New Orleans","Atlanta","orange",4],["New Orleans","Miami","red",6],["Nashville","Atlanta","gray",1],["Nashville","Raleigh","black",3],["Atlanta","Raleigh","gray",2],["Atlanta","Charleston","gray",2],["Atlanta","Miami","blue",5],["Atlanta","Miami","purple",5],["Toronto","Montreal","gray",3],["Toronto","Pittsburgh","gray",2],["Montreal","Boston","gray",2],["Montreal","New York","blue",3],["Boston","New York","yellow",2],["Boston","New York","red",2],["Pittsburgh","New York","green",2],["Pittsburgh","Washington","gray",2],["Pittsburgh","Raleigh","gray",2],["New York","Washington","orange",2],["New York","Washington","black",2],["Washington","Raleigh","gray",2],["Raleigh","Charleston","gray",2],["Charleston","Miami","purple",4]], TICKETS=[["Los Angeles", "New York", 21], ["Duluth", "Houston", 8], ["Sault Ste. Marie", "Nashville", 8], ["New York", "Atlanta", 6], ["Portland", "Nashville", 17], ["Vancouver", "Montreal", 20], ["Duluth", "El Paso", 10], ["Toronto", "Miami", 10], ["Portland", "Phoenix", 11], ["Dallas", "New York", 11], ["Calgary", "Salt Lake City", 7], ["Calgary", "Phoenix", 13], ["Los Angeles", "Miami", 20], ["Winnipeg", "Little Rock", 11], ["San Francisco", "Atlanta", 17], ["Kansas City", "Houston", 5], ["Los Angeles", "Chicago", 16], ["Denver", "Pittsburgh", 11], ["Helena", "Los Angeles", 8], ["Winnipeg", "Houston", 12], ["Montreal", "Atlanta", 9], ["Seattle", "New York", 22], ["Denver", "El Paso", 4], ["Vancouver", "Santa Fe", 13], ["Boston", "Miami", 12], ["Chicago", "New Orleans", 7], ["Montreal", "New Orleans", 13], ["Seattle", "Los Angeles", 9], ["Dallas", "Chicago", 9], ["San Francisco", "New York", 21]];
+const COLORS=["blue","red","green","goldenrod","black"];
+const TRAINCOL={blue:"#42b9e8",red:"#d54137",green:"#5aa84f",yellow:"#e6cc31",orange:"#e38a2b",white:"#eee9dc",black:"#34383d",purple:"#8e44ad",gray:"#aaa397",wild:"#d9b85f"};
+const SCORE={1:1,2:2,3:4,4:7,5:10,6:15};
+const TICKET_COLORS=[TRAINCOL.blue,TRAINCOL.red,TRAINCOL.green,TRAINCOL.yellow,TRAINCOL.orange,TRAINCOL.white,TRAINCOL.black,TRAINCOL.purple];
+let nextTicketColorIndex=0;
+function ticketColor(t){ if(t.tc) return t.tc; const i=nextTicketColorIndex++; t.tc=i<TICKET_COLORS.length?TICKET_COLORS[i]:`hsl(${((i-8)*137.508+18)%360} 78% 48%)`; return t.tc; }
+let players=[],turn=0,deck=[],market=[],destDeck=[],claimed={},drawCount=0,turnAction=null,pendingTickets=[],pendingMin=1,initialSetup=false;
+let selectedClaimColor=null;
+let finalRound=false,finalTurnsRemaining=0,gameFinished=false;
+const $=id=>document.getElementById(id);
+function shuffle(a){a=[...a];for(let i=a.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function setupNames(){let n=+$("numPlayers").value,s="";for(let i=0;i<n;i++)s+=`<div class="field"><label>Player ${i+1}</label><input class="nm" value="${localStorage.getItem("railName"+i)||"Player "+(i+1)}"></div>`;$("names").innerHTML=s}
+$("numPlayers").onchange=setupNames;setupNames();
+function startGame(){
+ finalRound=false;finalTurnsRemaining=0;gameFinished=false;claimed={};nextTicketColorIndex=0;market=[];
+ let n=+$("numPlayers").value;players=[...document.querySelectorAll(".nm")].slice(0,n).map((x,i)=>({name:x.value.trim()||`Player ${i+1}`,color:COLORS[i],score:0,trains:45,hand:[],tickets:[]}));
+ players.forEach((p,i)=>localStorage.setItem("railName"+i,p.name));
+ let types=["blue","red","green","yellow","orange","#00b8d4","black","purple"]; deck=[];types.forEach(c=>{for(let i=0;i<12;i++)deck.push(c)});for(let i=0;i<14;i++)deck.push("wild");deck=shuffle(deck);
+ destDeck=shuffle(TICKETS.map((t,i)=>({a:t[0],b:t[1],v:t[2],id:i})));
+ players.forEach(p=>{for(let i=0;i<4;i++)p.hand.push(deck.pop())});
+ refillMarket(); $("menu").classList.add("hidden");$("game").classList.remove("hidden");renderMap();renderAll();
+ initialSetup=true;turn=0;offerInitialTickets(0)
+}
+function refillMarket(){while(market.length<5&&deck.length)market.push(deck.pop());let wilds=market.filter(x=>x==="wild").length;if(wilds>=3&&deck.length>=5){deck.push(...market);deck=shuffle(deck);market=[];while(market.length<5)market.push(deck.pop())}}
+function offerInitialTickets(pi){turn=pi;pendingTickets=[destDeck.pop(),destDeck.pop(),destDeck.pop()].filter(Boolean);pendingMin=2;showTicketModal(`Choose ${players[pi].name}'s starting tickets`,`Keep at least 2. Tap a ticket to show its cities on the map.`)}
+function showTicketModal(title,instruction){$("ticketModal").classList.remove("hidden");renderTicketChoices()}
+function renderTicketChoices(){ $("ticketChoices").innerHTML=pendingTickets.map((t,i)=>{let tc=ticketColor(t);return `<div class="ticketChoice" data-i="${i}" data-tc="${tc}" style="--tc:${tc}" onmouseenter="previewPendingTicket(${i},this)" onmouseleave="restorePendingTicketGlow()" ontouchstart="previewPendingTicket(${i},this)" onclick="toggleTicket(${i},this)"><span class="value">${t.v}</span><div style="height:3px;background:${tc};margin:8px 20px;position:relative"><i style="position:absolute;left:-4px;top:-4px;width:10px;height:10px;border-radius:50%;background:${tc}"></i><i style="position:absolute;right:-4px;top:-4px;width:10px;height:10px;border-radius:50%;background:${tc}"></i></div></div>`}).join("")}
+let pendingGlowTimer=null,pendingGlowStep=0;
+function ticketCompleted(t,pi=turn){
+ const adj={};
+ ROUTES.forEach((r,i)=>{if(claimed[i]!==pi)return;let a=r[0],b=r[1];(adj[a]??=[]).push(b);(adj[b]??=[]).push(a)});
+ const seen=new Set([t.a]),q=[t.a];
+ while(q.length){let x=q.shift();if(x===t.b)return true;for(const y of (adj[x]||[]))if(!seen.has(y)){seen.add(y);q.push(y)}}
  return false;
 }
-function eliminate(id){if(!isHost||!requireEveryoneSawRole())return;const p=S.players.find(x=>x.id===id);if(!p||!S.alive[id])return;const n=S.players.findIndex(x=>x.id===id)+1;if(!confirm("Are you sure you want to eliminate Player number "+n+" ("+p.name+")?"))return;S.alive[id]=false;S.announcement=S.players.find(p=>p.id===id).name+" was eliminated by the daytime vote.";if(!win())sync();else sync()}
-function startNight(){
- if(!isHost)return;
- if(!requireEveryoneSawRole())return;
- const hadNight=!!S.hasHadNight;
- if(hadNight)S.day++;
- S.hasHadNight=true;
- S.phase="night";
- S.actions={};
- S.mineDone=false;
- S.lastNightDeaths=S.lastNightDeaths||[];
- S.announcement="Night "+S.day+" begins.";
- sync();
+function ownedActiveTickets(){let p=players[turn];return p?p.tickets.filter(t=>!ticketCompleted(t,turn)):[]}
+function paintTicketSet(active){
+ stopPendingGlowCycle();clearGlow();
+ const cityColors={};
+ active.forEach(t=>{let tc=ticketColor(t);[t.a,t.b].forEach(city=>{let a=(cityColors[city]??=[]);if(!a.includes(tc))a.push(tc)})});
+ const draw=()=>{Object.entries(cityColors).forEach(([city,colors])=>glowCity(city,colors[pendingGlowStep%colors.length]));pendingGlowStep++};
+ pendingGlowStep=0;draw();
+ if(Object.values(cityColors).some(colors=>colors.length>1))pendingGlowTimer=setInterval(draw,600);
 }
-const DAY_PHRASES=[
- "Good morning, city. It is daytime. Everyone, wake up and begin the discussion.",
- "The sun is up. The city is awake. It is time to talk.",
- "Morning has arrived. Wake up, everyone. The day phase begins now.",
- "The night is over. Citizens, open your eyes. It is time for discussion.",
- "A new day begins. Everyone, wake up and face the city.",
- "Daylight has returned. Wake up, everyone. The discussion begins.",
- "The city wakes to a new day. Open your eyes and start talking.",
- "Good morning. It is day now. Everyone may speak."
-];
-const NIGHT_PHRASES=[
- "Night has fallen. Everyone, close your eyes and go to sleep.",
- "The city is going to sleep. It is night. Please close your eyes.",
- "Darkness falls over the city. Everyone, go to sleep.",
- "The day is over. Night begins now. Everyone, close your eyes.",
- "The city grows quiet. It is nighttime. Please go to sleep.",
- "Night has arrived. Everyone, close your eyes and remain silent.",
- "The sun has set. The city sleeps. Night roles, prepare for your turn.",
- "It is night now. Everyone, please sleep. The city must be silent."
-];
-let lastDayPhrase=-1,lastNightPhrase=-1,lastSpokenPhaseKey="";
-function pickDifferent(list,last){
- let i=Math.floor(Math.random()*list.length);
- if(list.length>1&&i===last)i=(i+1+Math.floor(Math.random()*(list.length-1)))%list.length;
- return i;
+function stopPendingGlowCycle(){if(pendingGlowTimer){clearInterval(pendingGlowTimer);pendingGlowTimer=null}}
+function paintPendingHighlights(previewIndex=null){
+ const active=ownedActiveTickets();
+ document.querySelectorAll(".ticketChoice.selected").forEach(x=>{let i=+x.dataset.i,t=pendingTickets[i];if(t&&!active.includes(t))active.push(t)});
+ if(previewIndex!==null){let t=pendingTickets[previewIndex];if(t&&!active.includes(t))active.push(t)}
+ paintTicketSet(active);
 }
-function speakText(text,delay=0){
- if(!isHost)return;
- setTimeout(()=>{
-  try{
-   if("speechSynthesis" in window){
-    speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    u.lang="en-US";u.rate=.88;u.pitch=1;u.volume=1;
-    speechSynthesis.speak(u);
+function toggleTicket(i,el){el.classList.toggle("selected");paintPendingHighlights(null)}
+function previewPendingTicket(i,el){paintPendingHighlights(i)}
+function restorePendingTicketGlow(){paintPendingHighlights(null)}
+function glowCity(n,color="#5dff45"){let e=document.querySelector(`.city[data-name="${CSS.escape(n)}"]`);if(e){e.classList.add("glow");let d=e.querySelector(".dot");if(d){d.style.background=color;d.style.boxShadow=`0 0 7px 4px #fff,0 0 20px 8px ${color}`}}}
+function confirmTickets(){stopPendingGlowCycle();let sel=[...document.querySelectorAll(".ticketChoice.selected")].map(x=>+x.dataset.i);if(sel.length<pendingMin){toast(`Keep at least ${pendingMin} ticket${pendingMin>1?"s":""}.`);return}
+ let keep=[],back=[];pendingTickets.forEach((t,i)=>{if(sel.includes(i)){ticketColor(t);keep.push(t)}else back.push(t)}); players[turn].tickets.push(...keep);destDeck.unshift(...back);
+ $("ticketModal").classList.add("hidden");
+ if(initialSetup){if(turn<players.length-1){offerInitialTickets(turn+1)}else{initialSetup=false;turn=0;beginTurn()}}else{endTurn()}
+ renderAll()
+}
+function routeControl(A,B,i){
+ let r=ROUTES[i], a=r[0],b=r[1], key=[a,b].sort().join('|');
+ let siblings=[]; ROUTES.forEach((x,j)=>{if([x[0],x[1]].sort().join('|')===key)siblings.push(j)});
+ let pos=siblings.indexOf(i), n=siblings.length;
+ let mx=(A[0]+B[0])/2,my=(A[1]+B[1])/2,dx=B[0]-A[0],dy=B[1]-A[1],len=Math.hypot(dx,dy)||1;
+ let base=((i%6===0||i%6===3)?1:-1)*Math.min(2.4,Math.max(.35,len*.035));
+ let lane=n>1?(pos-(n-1)/2)*4.1:0;
+ let bend=base+lane;
+ return [mx-dy/len*bend,my+dx/len*bend];
+}
+function qPoint(A,C,B,t){let u=1-t;return [u*u*A[0]+2*u*t*C[0]+t*t*B[0],u*u*A[1]+2*u*t*C[1]+t*t*B[1]]}
+function qAngle(A,C,B,t){let dx=2*(1-t)*(C[0]-A[0])+2*t*(B[0]-C[0]),dy=2*(1-t)*(C[1]-A[1])+2*t*(B[1]-C[1]);return Math.atan2(dy,dx)*180/Math.PI}
+function renderMap(){
+ let m=$("map");m.innerHTML='<svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>';let svg=$("mapSvg");
+ ROUTES.forEach((r,i)=>{let [a,b,c,l]=r,A=CITIES[a],B=CITIES[b],C=routeControl(A,B,i),ns='http://www.w3.org/2000/svg';
+   let hit=document.createElementNS(ns,'path');hit.setAttribute('d',`M${A[0]},${A[1]} Q${C[0]},${C[1]} ${B[0]},${B[1]}`);hit.setAttribute('class','routeHit');hit.dataset.i=i;hit.onclick=()=>claimRoute(i);svg.appendChild(hit);
+   let approxLen=Math.hypot(B[0]-A[0],B[1]-A[1]);
+   let wagonW = l===2 ? Math.max(3.2,Math.min(8.2,(approxLen/l)*.94)) : Math.max(2.7,Math.min(4.35,(approxLen/l)*.88));
+   for(let k=0;k<l;k++){let t=(k+.5)/l,p=qPoint(A,C,B,t),ang=qAngle(A,C,B,t),g=document.createElementNS(ns,'g');g.setAttribute('class','routeSeg');g.dataset.i=i;g.setAttribute('transform',`translate(${p[0]} ${p[1]}) rotate(${ang})`);g.onclick=()=>claimRoute(i);
+     let rect=document.createElementNS(ns,'rect');rect.setAttribute('x',-wagonW/2);rect.setAttribute('y',-.62);rect.setAttribute('width',wagonW);rect.setAttribute('height',1.24);rect.setAttribute('rx',.32);rect.setAttribute('class','routePiece');rect.setAttribute('fill',TRAINCOL[c]);g.appendChild(rect);
+     let inner=document.createElementNS(ns,'line');inner.setAttribute('x1',-wagonW*.34);inner.setAttribute('x2',wagonW*.34);inner.setAttribute('y1',-.18);inner.setAttribute('y2',-.18);inner.setAttribute('class','routePieceInner');g.appendChild(inner);
+     [-wagonW*.27,wagonW*.27].forEach(wx=>{let wh=document.createElementNS(ns,'circle');wh.setAttribute('cx',wx);wh.setAttribute('cy',.62);wh.setAttribute('r',.20);wh.setAttribute('class','routeWheel');g.appendChild(wh)});svg.appendChild(g)
    }
-  }catch(e){}
- },delay);
-}
-function publicNightResultSpeech(){
- if(!S.hasHadNight)return "";
- const dead=S.lastNightDeaths||[];
- if(dead.length===0){
-   const options=["No one died during the night.","Nobody is dead. The city survived the night.","Nothing happened during the night. Everyone is still alive."];
-   return options[Math.floor(Math.random()*options.length)];
- }
- const labels=dead.map(id=>{
-   const i=S.players.findIndex(p=>p.id===id)+1;
-   const p=S.players.find(p=>p.id===id);
-   return p?`Player number ${i}, ${p.name}`:`Player number ${i}`;
  });
- if(labels.length===1)return labels[0]+" is dead.";
- if(labels.length===2)return labels[0]+" and "+labels[1]+" are dead.";
- return labels.slice(0,-1).join(", ")+", and "+labels[labels.length-1]+" are dead.";
+ Object.entries(CITIES).forEach(([n,p])=>{let e=document.createElement('div');e.className='city';e.dataset.name=n;e.style.left=p[0]+'%';e.style.top=p[1]+'%';e.innerHTML=`<div class="dot"></div>`;m.appendChild(e)})
 }
-function announcePhaseOnce(){
- if(!["day","night"].includes(S.phase))return;
- const key=S.phase+"-"+S.day;
- if(lastSpokenPhaseKey===key)return;
- lastSpokenPhaseKey=key;
- let text="";
- if(S.phase==="day"){
-  lastDayPhrase=pickDifferent(DAY_PHRASES,lastDayPhrase);
-  text=DAY_PHRASES[lastDayPhrase];
-  const result=publicNightResultSpeech();
-  if(result)text+=" "+result;
+function renderAll(){
+ $("players").innerHTML=players.map((p,i)=>`<div class="playerCard ${i===turn&&!initialSetup?"active":""}" style="border-left:8px solid ${p.color}"><div class="pname">${p.name}</div><div class="stats"><span>★ ${p.score}</span><span>🚂 ${p.trains}</span><span>🎴 ${p.hand.length}</span></div></div>`).join("");
+ if(players[turn])$("turnBanner").textContent=`${players[turn].name}'s turn`;
+ $("market").innerHTML=market.map((c,i)=>`<div class="card ${c==="wild"?"wild":""}" onclick="drawFace(${i})"><div class="train" style="background:${TRAINCOL[c]}"></div></div>`).join("");
+ let p=players[turn]||players[0]; if(!p)return;
+ let counts={};p.hand.forEach(c=>counts[c]=(counts[c]||0)+1);$("hand").innerHTML=Object.entries(counts).map(([c,n])=>`<div class="handCard ${selectedClaimColor===c?"claimColorSelected":""}" onclick="selectClaimColor('${c}')"><b>${n}×</b><div class="swatch" style="background:${TRAINCOL[c]}"></div></div>`).join("");
+ $("myTickets").innerHTML=p.tickets.map(t=>`<div class="ticket" style="--ticket-color:${ticketColor(t)}"><span class="value">${t.v}</span></div>`).join("");
+ $("sideTickets").innerHTML="";
+ let mt=$("mapSavedTickets");
+ mt.innerHTML=p.tickets.map((t,i)=>{
+   let top=i===p.tickets.length-1;
+   let a=t.a.replaceAll("'","\\'"); let b=t.b.replaceAll("'","\\'");
+   let tc=ticketColor(t);
+   return `<div class="ticket ${top?"ticketTop":"ticketUnder"}" style="--ticket-color:${tc}"><span class="value">${t.v}</span></div>`;
+ }).join("");
+ document.querySelectorAll(".routeSeg").forEach(g=>{
+   let i=+g.dataset.i,rect=g.querySelector(".routePiece"),owner=claimed[i],isClaimed=owner!=null;
+   g.classList.toggle("claimedSeg",isClaimed);
+   rect.setAttribute("fill",isClaimed?players[owner].color:TRAINCOL[ROUTES[i][2]]);
+   // Claimed wagons are deliberately about twice as thick as empty railway pieces.
+   rect.setAttribute("y",isClaimed?-1.115:-.62);
+   rect.setAttribute("height",isClaimed?2.23:1.24);
+   rect.setAttribute("rx",isClaimed?.46:.32);
+   let inner=g.querySelector(".routePieceInner");
+   if(inner) inner.setAttribute("y1",isClaimed?-.34:-.18),inner.setAttribute("y2",isClaimed?-.34:-.18);
+   g.querySelectorAll(".routeWheel").forEach(wh=>{wh.setAttribute("cy",isClaimed?1.115:.62);wh.setAttribute("r",isClaimed?.25:.20)});
+ })
+ updateClaimableRouteVisuals();
+ if($("ticketModal").classList.contains("hidden")) paintTicketSet(ownedActiveTickets());
+}
+function beginTurn(){
+ if(gameFinished)return;
+ drawCount=0;turnAction=null;selectedClaimColor=null;renderAll();
+ 
+}
+function endTurn(){
+ if(gameFinished)return;
+ if(finalRound){
+   finalTurnsRemaining--;
+   if(finalTurnsRemaining<=0){finishGame();return}
+ }else if(players[turn].trains<=2){
+   finalRound=true;
+   finalTurnsRemaining=players.length;
+   
+ }
+ turn=(turn+1)%players.length;beginTurn();
+}
+function finishGame(){
+ gameFinished=true;stopPendingGlowCycle();clearGlow();
+ const rows=players.map((p,pi)=>{
+   let ticketDelta=0,done=0,missed=0;
+   p.tickets.forEach(t=>{if(ticketCompleted(t,pi)){ticketDelta+=t.v;done++}else{ticketDelta-=t.v;missed++}});
+   p.score+=ticketDelta;
+   return {p,pi,ticketDelta,done,missed,total:p.score};
+ }).sort((a,b)=>b.total-a.total);
+ renderAll();
+ const top=rows[0]?.total, winners=rows.filter(r=>r.total===top).map(r=>r.p.name).join(' & ');
+ const body=rows.map((r,i)=>`<div style="display:grid;grid-template-columns:24px 1fr 58px;gap:8px;align-items:center;padding:8px 4px;border-bottom:1px solid #9b6a3066"><b>${i+1}</b><span><b>${r.p.name}</b><small style="display:block">Tickets: ${r.ticketDelta>=0?'+':''}${r.ticketDelta} (${r.done} complete, ${r.missed} incomplete)</small></span><strong style="font-size:20px">${r.total}</strong></div>`).join('');
+ $('finalResults').innerHTML=`<h2 style="margin-top:0">Journey Complete</h2><div style="font-size:18px;margin-bottom:8px">🏆 ${winners}</div>${body}<button class="btn primary" style="width:100%;margin-top:12px" onclick="location.reload()">New Game</button>`;
+ $('finalModal').classList.remove('hidden');
+}
+function drawFace(i){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket")return;let c=market[i];if(drawCount===1&&c==="wild"){toast("A face-up Locomotive cannot be your second draw.");return}turnAction="cards";players[turn].hand.push(c);market.splice(i,1);refillMarket();drawCount++;renderAll();if(c==="wild"||drawCount>=2)endTurn()}
+function drawBlind(){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket"||!deck.length)return;turnAction="cards";players[turn].hand.push(deck.pop());drawCount++;renderAll();if(drawCount>=2)endTurn()}
+function selectClaimColor(c){
+ if(gameFinished||initialSetup||turnAction)return;
+ selectedClaimColor=(selectedClaimColor===c?null:c);
+ renderAll();
+ 
+}
+function parallelRouteIndices(i){
+ let [a,b]=ROUTES[i];
+ return ROUTES.map((r,j)=>j!==i&&((r[0]===a&&r[1]===b)||(r[0]===b&&r[1]===a))?j:-1).filter(j=>j>=0);
+}
+function parallelRouteAllowed(i){
+ let mates=parallelRouteIndices(i);
+ if(!mates.length)return true;
+ let occupied=mates.filter(j=>claimed[j]!=null);
+ if(players.length<=3)return occupied.length===0;
+ // With 4–5 players, the second parallel route must belong to a different player.
+ return !occupied.some(j=>claimed[j]===turn);
+}
+function routeCanUseSelected(i){
+ if(selectedClaimColor==null||claimed[i]!=null||!parallelRouteAllowed(i))return false;
+ let [a,b,c,l]=ROUTES[i],p=players[turn]; if(!p||p.trains<l)return false;
+ let counts={};p.hand.forEach(x=>counts[x]=(counts[x]||0)+1);
+ if(selectedClaimColor==="wild")return (counts.wild||0)>=l;
+ if(c!=="gray"&&c!==selectedClaimColor)return false;
+ return (counts[selectedClaimColor]||0)+(counts.wild||0)>=l;
+}
+function updateClaimableRouteVisuals(){
+ // Version 25: selecting a Train Card color does not reveal legal routes.
+ document.querySelectorAll(".routeSeg").forEach(g=>g.classList.remove("claimEligible","claimIneligible"));
+}
+function claimRoute(i){
+ if(gameFinished||initialSetup||turnAction||claimed[i]!=null)return;
+ if(!selectedClaimColor)return
+ let [a,b,c,l]=ROUTES[i],p=players[turn];
+ if(p.trains<l){railWarning();return}
+ if(!parallelRouteAllowed(i)){railWarning();return}
+ if(!routeCanUseSelected(i)){railWarning();return}
+ let chosen=selectedClaimColor,need=l,newHand=[];
+ if(chosen==="wild"){
+   for(let x of p.hand){if(need&&x==="wild"){need--;continue}newHand.push(x)}
  }else{
-  lastNightPhrase=pickDifferent(NIGHT_PHRASES,lastNightPhrase);text=NIGHT_PHRASES[lastNightPhrase];
+   for(let x of p.hand){if(need&&x===chosen){need--;continue}newHand.push(x)}
+   p.hand=newHand;newHand=[];
+   for(let x of p.hand){if(need&&x==="wild"){need--;continue}newHand.push(x)}
  }
- speakText(text,180);
+ p.hand=newHand;claimed[i]=turn;p.trains-=l;p.score+=SCORE[l]||0;turnAction="route";selectedClaimColor=null;renderAll();setTimeout(endTurn,700)
 }
-function playVictoryAnnouncement(team){
- if(!isHost)return;
- try{
-   const AC=window.AudioContext||window.webkitAudioContext;
-   if(AC){
-     const ctx=new AC(),now=ctx.currentTime;
-     [0,.22].forEach((delay,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=i?1046:880;g.gain.setValueAtTime(.0001,now+delay);g.gain.exponentialRampToValueAtTime(.32,now+delay+.015);g.gain.exponentialRampToValueAtTime(.0001,now+delay+.18);o.connect(g);g.connect(ctx.destination);o.start(now+delay);o.stop(now+delay+.2)});
-     setTimeout(()=>{try{ctx.close()}catch(e){}},900);
-   }
- }catch(e){}
- setTimeout(()=>{
-   try{
-     if("speechSynthesis" in window){
-       speechSynthesis.cancel();
-       const u=new SpeechSynthesisUtterance(team+" wins!");
-       u.lang="en-US";u.rate=.82;u.pitch=1;u.volume=1;
-       speechSynthesis.speak(u);
-     }
-   }catch(e){}
- },520);
-}
-function announceWinnerOnce(){
- if(S.phase!=="ended"||!S.winner)return;
- const key=S.winner+"-"+S.day;
- if(window.__mafiaWinnerKey===key)return;
- window.__mafiaWinnerKey=key;
- playVictoryAnnouncement(S.winner);
-}
-function win(){let a=alive(),m=a.filter(p=>S.roles[p.id]==="Mafia").length,c=a.length-m;if(m===0){S.phase="ended";S.winner="Citizen team";S.announcement="Citizen team wins! All Mafia players have been eliminated.";return true}if(m>=c){S.phase="ended";S.winner="Mafia team";S.announcement="Mafia team wins! The number of living Mafia is now equal to or greater than the number of living Citizens.";return true}return false}
-function roles(){let n=S.players.length,m=+$("mc").value,d=+$("dc").value,x=+$("xc").value;if(m+d+x>=n){alert("Reduce special roles. At least one ordinary Citizen is required.");return false}let a=[...Array(m).fill("Mafia"),...Array(d).fill("Doctor"),...Array(x).fill("Detective"),...Array(n-m-d-x).fill("Citizen")];for(let i=a.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}S.players.forEach((p,i)=>{S.roles[p.id]=a[i];S.alive[p.id]=true});return true}
-function host(){isHost=true;room=Math.random().toString(36).slice(2,8).toUpperCase();myId="host-"+Math.random().toString(36).slice(2);S.players=[{id:myId,name:myName}];peer=new Peer("mafia-"+room.toLowerCase());peer.on("open",()=>{$("code").textContent=room;show("lobby");render()});peer.on("connection",c=>{c.on("data",m=>{if(m.type==="hello"){
- if(S.phase!=="lobby"){
-   const wanted=(m.name||"").trim().toLowerCase();
-   const oldPlayer=S.players.find(p=>p.name.trim().toLowerCase()===wanted);
-   if(!oldPlayer)return send(c,{type:"error",text:"Game already started. To reconnect, enter the exact name you used in this game."});
-   const oldId=oldPlayer.id;
-   const newId=c.peer;
-   if(oldId!==newId){
-     oldPlayer.id=newId;
-     if(S.roles&&Object.prototype.hasOwnProperty.call(S.roles,oldId)){S.roles[newId]=S.roles[oldId];delete S.roles[oldId]}
-     if(S.alive&&Object.prototype.hasOwnProperty.call(S.alive,oldId)){S.alive[newId]=S.alive[oldId];delete S.alive[oldId]}
-     if(S.actions&&Object.prototype.hasOwnProperty.call(S.actions,oldId)){S.actions[newId]=S.actions[oldId];delete S.actions[oldId]}
-     if(S.roleSeen&&Object.prototype.hasOwnProperty.call(S.roleSeen,oldId)){S.roleSeen[newId]=S.roleSeen[oldId];delete S.roleSeen[oldId]}
-     conns.delete(oldId);
-   }
-   conns.set(newId,c);
-   send(c,{type:"reconnected",id:newId});
-   send(c,{type:"state",s:viewFor(newId)});
-   sync();
-   return;
+function drawTickets(){if(gameFinished||initialSetup||turnAction)return;turnAction="ticket";pendingTickets=[destDeck.pop(),destDeck.pop(),destDeck.pop()].filter(Boolean);if(!pendingTickets.length){turnAction=null;toast("No Destination Tickets left.");return}pendingMin=1;showTicketModal("Draw Destination Tickets","Keep at least 1. Tap a ticket to show its cities on the map.")}
+function highlightTicket(a,b,color="#5dff45"){clearGlow();glowCity(a,color);glowCity(b,color)}
+function glowCity(n,color){let e=document.querySelector(`.city[data-name="${CSS.escape(n)}"]`);if(e){e.classList.add("glow");let d=e.querySelector(".dot");if(d){d.style.background=color;d.style.boxShadow=`0 0 7px 4px #fff,0 0 20px 8px ${color}`}}}
+function clearGlow(){document.querySelectorAll(".city").forEach(x=>{x.classList.remove("glow");let d=x.querySelector(".dot");if(d){d.style.background="";d.style.boxShadow=""}})}
+let toastTimer;function toast(s){let e=$("toast");e.textContent=s;e.classList.remove("hidden");clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.add("hidden"),2000)} function railWarning(){toast("This railway cannot be occupied with the selected cards.");}
+function showHelp(){$("help").classList.remove("hidden")}
+</script><div id="rotateNotice"><div><span class="rot">↻ 📱</span><h2>Rotate your device</h2><p>This game is designed for landscape play.</p></div></div>
+<script>
+(function(){
+ function cleanTopText(){
+   const phrases=['player turn','player\\'s turn','train cards','train card','choose a train card','select a train card'];
+   document.querySelectorAll('.topbar,header,.header').forEach(box=>{
+     [...box.children].forEach(el=>{
+       if(el.classList.contains('version')) return;
+       const t=(el.textContent||'').trim().toLowerCase();
+       if(phrases.some(p=>t.includes(p)) && !el.classList.contains('toast') && !el.classList.contains('warning')) el.style.display='none';
+     });
+   });
  }
- conns.set(c.peer,c);S.players.push({id:c.peer,name:m.name});sync()
-}if(m.type==="action")record(c.peer,m.role,m.target);if(m.type==="roleSeen"){S.roleSeen=S.roleSeen||{};S.roleSeen[c.peer]=true;sync()}});c.on("close",()=>{if(S.phase==="lobby"){conns.delete(c.peer);S.players=S.players.filter(p=>p.id!==c.peer);sync()}})});peer.on("error",e=>alert("Connection error: "+e.type))}
-function guest(){isHost=false;room=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(room))return alert("Enter the 6-character room code.");peer=new Peer();peer.on("open",id=>{myId=id;hostConn=peer.connect("mafia-"+room.toLowerCase(),{reliable:true});hostConn.on("open",()=>{send(hostConn,{type:"hello",name:myName});$("code").textContent=room;show("lobby")});hostConn.on("data",m=>{if(m.type==="reconnected"){myId=m.id;roleViewed=true;roleRevealing=false}if(m.type==="state"){let wasLobby=S.phase==="lobby",done=S.mineDone&&S.phase===m.s.phase;S=m.s;if(wasLobby&&S.phase!=="lobby"){roleViewed=false;roleRevealing=false}S.mineDone=done;render()}if(m.type==="private"){$("announce").textContent=m.text}
-   if(m.type==="detectiveResult"&&S.roles&&S.roles[myId]==="Detective"){setTimeout(()=>showDetectiveResult(m.text),0)}
-   if(m.type==="error")alert(m.text)});hostConn.on("close",()=>alert("Connection lost. If the moderator is still in the game, reopen the game and join again using the same room code and exactly the same player name."))});peer.on("error",e=>alert("Connection error: "+e.type))}
-$("roleBack").onclick=revealRoleOnce;
-$("roleBack").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();revealRoleOnce()}};
-$("showJoin").onclick=()=>$("joinBox").classList.toggle("hide");$("create").onclick=()=>{myName=$("nm").value.trim();if(!myName)return alert("Enter your name.");host()};$("join").onclick=()=>{myName=$("nm").value.trim();if(!myName)return alert("Enter your name.");guest()};$("start").onclick=()=>{if(S.players.length<4)return alert("At least 4 players are required.");if(!roles())return;roleViewed=false;roleRevealing=false;S.day=1;S.hasHadNight=false;S.lastNightDeaths=[];S.roleSeen={};S.phase="day";S.announcement="Day 1. Reveal your role card once, then discuss. The moderator starts the first night when ready.";sync()};
-$("noKill").onclick=null;
-$("noKill").addEventListener("click",e=>{
- e.preventDefault();
- e.stopPropagation();
- if(!isHost)return;
- startNight();
-});
+ window.addEventListener('load',cleanTopText);
+ setTimeout(cleanTopText,100);
 })();
+</script>
 
 
-window.addEventListener("beforeunload",function(e){
- if(S && S.phase && S.phase!=="lobby" && S.phase!=="ended"){
-   e.preventDefault();
-   e.returnValue="The game will end or you may lose your connection if you refresh or leave this page.";
-   return e.returnValue;
+<script>
+(function(){
+ const colorMap={
+  red:'#d93b35',orange:'#ed8b2c',yellow:'#e5c33b',green:'#3d9b57',
+  blue:'#438bd1',purple:'#9b59b6',pink:'#df6fa7',black:'#30343b',
+  gray:'#9aa0a6',grey:'#9aa0a6',white:'#eee',locomotive:'#8b5cf6',loco:'#8b5cf6'
+ };
+ function cardColor(el){
+   if(!el)return null;
+   const data=(el.dataset.color||el.dataset.card||'').toLowerCase();
+   if(data && colorMap[data]) return {name:data,color:colorMap[data]};
+   const txt=(el.textContent||'').toLowerCase();
+   for(const k of Object.keys(colorMap)) if(txt.includes(k)) return {name:k,color:colorMap[k]};
+   const sw=el.querySelector&&el.querySelector('.swatch');
+   if(sw){
+     const c=getComputedStyle(sw).backgroundColor;
+     if(c && c!=='rgba(0, 0, 0, 0)') return {name:'card',color:c};
+   }
+   return null;
  }
-});
-</script></body></html>
+ function handTarget(){
+   return document.querySelector('.hand')||document.querySelector('.handArea')||document.querySelector('.bottomDock');
+ }
+ function animateDraw(source,known){
+   const target=handTarget(); if(!source||!target)return;
+   const a=source.getBoundingClientRect(), b=target.getBoundingClientRect();
+   let info=known||cardColor(source);
+   const fly=document.createElement('div'); fly.className='drawFlyCard';
+   fly.style.left=(a.left+a.width/2-22)+'px'; fly.style.top=(a.top+a.height/2-32)+'px';
+   fly.style.background=(info&&info.color)||'linear-gradient(135deg,#654,#c9a86a,#432)';
+   document.body.appendChild(fly);
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     fly.style.left=(b.left+b.width/2-22)+'px';
+     fly.style.top=(b.top+b.height/2-32)+'px';
+     fly.style.transform='rotate(10deg) scale(.72)';
+     fly.style.opacity='.15';
+   }));
+   if(info&&info.name&&info.name!=='card'){
+     const tag=document.createElement('div'); tag.className='drawReveal';
+     tag.textContent=info.name.toUpperCase();
+     tag.style.left=(a.left+a.width/2)+'px'; tag.style.top=(a.top+a.height/2)+'px';
+     tag.style.border='2px solid '+info.color;
+     document.body.appendChild(tag); setTimeout(()=>tag.remove(),1200);
+   }
+   setTimeout(()=>fly.remove(),900);
+ }
+ document.addEventListener('click',function(e){
+   const source=e.target.closest('.marketCard,.trainCard,.faceCard,.deck,.trainDeck,[data-color],[data-card]');
+   if(!source)return;
+   // Only animate sources in the right-side market/deck area, not cards already in the hand.
+   if(source.closest('.hand,.handArea,.bottomDock') && !source.closest('.rightPanel,.market,.marketPanel')) return;
+   if(source.closest('.rightPanel,.market,.marketPanel') || source.classList.contains('deck') || source.classList.contains('trainDeck')){
+     animateDraw(source,cardColor(source));
+   }
+ },true);
+ window.animateTrainCardDraw=animateDraw;
+})();
+</script>
+
+
+<div id="finalScoreShow">
+ <div class="scoreStage">
+  <h2>Final Scoring</h2>
+  <div class="scoreRows" id="scoreRows"></div>
+  <div class="scoreWinner" id="scoreWinner"></div>
+ </div>
+</div>
+
+
+<script>
+(function(){
+ let ac=null;
+ function ctx(){ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended')ac.resume(); return ac}
+ function tone(freq,dur=.1,type='sine',vol=.055,delay=0){
+   try{let c=ctx(),o=c.createOscillator(),g=c.createGain(),t=c.currentTime+delay;o.type=type;o.frequency.setValueAtTime(freq,t);
+   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+   o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dur+.03)}catch(e){}
+ }
+ const SFX={
+   ticket(){tone(520,.08,'triangle');tone(700,.11,'triangle',.05,.08)},
+   draw(){tone(310,.06,'sine');tone(430,.08,'sine',.045,.06)},
+   rail(){tone(145,.07,'square',.035);tone(190,.07,'square',.035,.07);tone(245,.10,'square',.03,.14)},
+   complete(){tone(523,.12,'triangle');tone(659,.12,'triangle',.055,.12);tone(784,.22,'triangle',.06,.24)},
+   plus(){tone(660,.07,'sine',.035);tone(880,.08,'sine',.03,.06)},
+   minus(){tone(260,.10,'sawtooth',.025);tone(190,.12,'sawtooth',.02,.08)},
+   longest(){tone(392,.1,'triangle');tone(523,.1,'triangle',.05,.1);tone(659,.1,'triangle',.05,.2);tone(784,.25,'triangle',.06,.3)}
+ };
+ window.gameSFX=SFX;
+
+ // Semantic click cues for existing controls/cards.
+ document.addEventListener('click',e=>{
+   let el=e.target.closest('button,.ticketCard,.destCard,.destinationCard,.marketCard,.trainCard,.deck,.trainDeck,.routeHit');
+   if(!el)return;
+   let t=(el.textContent||'').toLowerCase(), c=el.className||'';
+   if(/ticket|destination|distinction/.test(t+' '+c)) SFX.ticket();
+   else if(/marketCard|trainCard|deck|trainDeck/.test(c)) SFX.draw();
+ },true);
+
+ // Observe claimed rails and completed-ticket UI/state changes visually, adding distinct sounds.
+ let claimedCount=0, completedCount=0;
+ function counts(){
+   let cc=document.querySelectorAll('.claimedSeg').length;
+   let dc=document.querySelectorAll('.ticketComplete,.completedTicket,.destComplete').length;
+   if(claimedCount && cc>claimedCount) SFX.rail();
+   if(completedCount && dc>completedCount) SFX.complete();
+   claimedCount=cc;completedCount=dc;
+ }
+ window.addEventListener('load',()=>{counts();new MutationObserver(counts).observe(document.body,{subtree:true,attributes:true,childList:true})});
+
+ // Longest continuous route in number of train segments, using only routes owned by player.
+ function longestForPlayer(pi){
+   if(typeof ROUTES==='undefined'||typeof claimed==='undefined')return 0;
+   let edges=[];
+   ROUTES.forEach((r,i)=>{if(claimed[i]===pi)edges.push({a:r[0],b:r[1],w:+r[3]||1,id:i})});
+   let best=0;
+   function dfs(city,used,total){
+     if(total>best)best=total;
+     for(const e of edges){
+       if(used.has(e.id))continue;
+       let nxt=null;if(e.a===city)nxt=e.b;else if(e.b===city)nxt=e.a;else continue;
+       let n=new Set(used);n.add(e.id);dfs(nxt,n,total+e.w);
+     }
+   }
+   let cities=new Set(edges.flatMap(e=>[e.a,e.b]));cities.forEach(c=>dfs(c,new Set(),0));
+   return best;
+ }
+ function ticketDone(pi,t){
+   try{
+     if(typeof isTicketComplete==='function')return !!isTicketComplete(pi,t);
+     if(typeof ticketComplete==='function')return !!ticketComplete(pi,t);
+     if(typeof connected==='function')return !!connected(pi,t[0],t[1]);
+   }catch(e){}
+   return false;
+ }
+ function ticketsOf(pi){
+   let p=players&&players[pi];
+   return (p&&(p.tickets||p.destinations||p.destinationTickets))||[];
+ }
+ function baseScore(pi){
+   let p=players&&players[pi]; return +(p&&(p.routeScore??p.score??p.points) ||0);
+ }
+ function tVal(t){return +(t.value??t.points??t[2]??0)}
+ function tName(t){return (t.a||t.from||t[0]||'')+' – '+(t.b||t.to||t[1]||'')}
+ const wait=ms=>new Promise(r=>setTimeout(r,ms));
+ async function animateFinalScoring(){
+   if(!window.players||!players.length)return;
+   const box=document.getElementById('finalScoreShow'),rows=document.getElementById('scoreRows'),win=document.getElementById('scoreWinner');
+   rows.innerHTML='';win.textContent='';box.classList.add('on');
+   let totals=players.map((p,i)=>baseScore(i)), rowEls=[];
+   players.forEach((p,i)=>{
+     let d=document.createElement('div');d.className='scorePlayer';d.innerHTML=`<div class="scoreHead"><span>${p.name||'Player '+(i+1)}</span><span class="scoreTotal">${totals[i]}</span></div><div class="scoreTrack"><div class="scoreFill"></div></div><div class="scoreEvent">Railway points: ${totals[i]}</div>`;
+     rows.appendChild(d);rowEls.push(d)
+   });
+   await wait(800);
+   for(let i=0;i<players.length;i++){
+     for(const t of ticketsOf(i)){
+       let ok=ticketDone(i,t),v=tVal(t),delta=ok?v:-v;totals[i]+=delta;
+       let ev=rowEls[i].querySelector('.scoreEvent');ev.innerHTML=`Destination Ticket ${ok?'completed':'incomplete'} <span class="scoreDelta">${delta>=0?'+':''}${delta}</span>`;
+       rowEls[i].querySelector('.scoreTotal').textContent=totals[i];
+       rowEls[i].querySelector('.scoreFill').style.width=Math.min(100,Math.max(4,totals[i]))+'%';
+       ok?SFX.plus():SFX.minus(); await wait(720);
+     }
+   }
+   let lens=players.map((p,i)=>longestForPlayer(i)), mx=Math.max(...lens);
+   if(mx>0){
+     for(let i=0;i<players.length;i++)if(lens[i]===mx){
+       totals[i]+=10;rowEls[i].querySelector('.scoreTotal').textContent=totals[i];
+       rowEls[i].querySelector('.scoreEvent').innerHTML=`Longest continuous railway (${mx} trains) <span class="scoreDelta">+10</span>`;
+       SFX.longest();await wait(800);
+     }
+   }
+   let high=Math.max(...totals), winners=players.map((p,i)=>totals[i]===high?i:-1).filter(i=>i>=0);
+   winners.forEach(i=>rowEls[i].classList.add('leader'));
+   win.textContent=(winners.length>1?'Winners: ':'Winner: ')+winners.map(i=>players[i].name||'Player '+(i+1)).join(' & ')+' — '+high+' points';
+   SFX.complete();
+ }
+ window.animateFinalScoring=animateFinalScoring;
+
+ // Hook common end-game functions if present, preserving existing logic.
+ ['endGame','finishGame','showFinalScores','finalScoring'].forEach(name=>{
+   if(typeof window[name]==='function' && window[name]!==animateFinalScoring){
+     const old=window[name];window[name]=function(){let r=old.apply(this,arguments);setTimeout(animateFinalScoring,250);return r}
+   }
+ });
+})();
+</script>
+
+</body></html>
