@@ -384,6 +384,15 @@ linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
   padding:8px 15px!important;
 }
 
+
+/* Version 32 — white railways are clearly ivory/white, distinct from black routes. */
+.routeSeg[data-route-color="white"] .routePiece:not(.claimedRoutePiece){
+  fill:#fffdf2!important;
+  stroke:#8b8172!important;
+  filter:brightness(1.13) contrast(.94) drop-shadow(0 .45px .35px #0007)!important;
+}
+.routeSeg[data-route-color="white"] .routePieceInner{stroke:#ffffff!important;opacity:1!important}
+
 </style></head>
 <body>
 <section id="menu" class="screen menu">
@@ -394,7 +403,7 @@ linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
 <div id="names"></div>
 <button class="btn primary" onclick="startGame()">🚂 Start Journey</button>
 <p class="note">Original browser implementation based on the supplied gameplay rules. Artwork and interface are newly created.</p>
-<div class="version">Version 31</div>
+<div class="version">Version 32</div>
 </div></section>
 
 <section id="game" class="screen hidden">
@@ -489,7 +498,7 @@ function renderMap(){
    let hit=document.createElementNS(ns,'path');hit.setAttribute('d',`M${A[0]},${A[1]} Q${C[0]},${C[1]} ${B[0]},${B[1]}`);hit.setAttribute('class','routeHit');hit.dataset.i=i;hit.onclick=()=>claimRoute(i);svg.appendChild(hit);
    let approxLen=Math.hypot(B[0]-A[0],B[1]-A[1]);
    let wagonW = l===2 ? Math.max(3.2,Math.min(8.2,(approxLen/l)*.94)) : Math.max(2.7,Math.min(4.35,(approxLen/l)*.88));
-   for(let k=0;k<l;k++){let t=(k+.5)/l,p=qPoint(A,C,B,t),ang=qAngle(A,C,B,t),g=document.createElementNS(ns,'g');g.setAttribute('class','routeSeg');g.dataset.i=i;g.setAttribute('transform',`translate(${p[0]} ${p[1]}) rotate(${ang})`);g.onclick=()=>claimRoute(i);
+   for(let k=0;k<l;k++){let t=(k+.5)/l,p=qPoint(A,C,B,t),ang=qAngle(A,C,B,t),g=document.createElementNS(ns,'g');g.setAttribute('class','routeSeg');g.dataset.i=i;g.dataset.routeColor=c;g.setAttribute('transform',`translate(${p[0]} ${p[1]}) rotate(${ang})`);g.onclick=()=>claimRoute(i);
      let rect=document.createElementNS(ns,'rect');rect.setAttribute('x',-wagonW/2);rect.setAttribute('y',-.62);rect.setAttribute('width',wagonW);rect.setAttribute('height',1.24);rect.setAttribute('rx',.32);rect.setAttribute('class','routePiece');rect.setAttribute('fill',TRAINCOL[c]);g.appendChild(rect);
      let inner=document.createElementNS(ns,'line');inner.setAttribute('x1',-wagonW*.34);inner.setAttribute('x2',wagonW*.34);inner.setAttribute('y1',-.18);inner.setAttribute('y2',-.18);inner.setAttribute('class','routePieceInner');g.appendChild(inner);
      [-wagonW*.27,wagonW*.27].forEach(wx=>{let wh=document.createElementNS(ns,'circle');wh.setAttribute('cx',wx);wh.setAttribute('cy',.62);wh.setAttribute('r',.20);wh.setAttribute('class','routeWheel');g.appendChild(wh)});svg.appendChild(g)
@@ -514,7 +523,7 @@ function renderAll(){
  }).join("");
  document.querySelectorAll(".routeSeg").forEach(g=>{
    let i=+g.dataset.i,rect=g.querySelector(".routePiece"),owner=claimed[i],isClaimed=owner!=null;
-   g.classList.toggle("claimedSeg",isClaimed);
+   g.classList.toggle("claimedSeg",isClaimed); rect.classList.toggle("claimedRoutePiece",isClaimed);
    rect.setAttribute("fill",isClaimed?players[owner].color:TRAINCOL[ROUTES[i][2]]);
    // Claimed wagons are deliberately about twice as thick as empty railway pieces.
    rect.setAttribute("y",isClaimed?-1.115:-.62);
