@@ -430,6 +430,15 @@ linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
   .market > .deck{height:50px!important;min-height:50px!important;font-size:9px!important}
 }
 
+
+/* Version 35 — rainbow Locomotives + fixed face-up market slots. */
+:root{--loco-rainbow:linear-gradient(135deg,#ff3b30 0%,#ff9500 16%,#ffdd00 32%,#34c759 48%,#00b7ff 64%,#5856d6 80%,#af52de 100%)}
+/* Locomotive cards are unmistakably multicolor everywhere they are visible. */
+.market .card.wild{background:var(--loco-rainbow)!important}
+.market .card.wild .train{background:var(--loco-rainbow)!important;border-color:#fff!important;box-shadow:inset 0 0 0 1px #2228,0 2px 5px #0008!important}
+.handCard.wildHand{background:var(--loco-rainbow)!important;border-color:#fff!important}
+.handCard.wildHand .swatch{background:var(--loco-rainbow)!important;border-color:#fff!important;box-shadow:inset 0 0 0 1px #2228!important}
+
 </style></head>
 <body>
 <section id="menu" class="screen menu">
@@ -440,7 +449,7 @@ linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
 <div id="names"></div>
 <button class="btn primary" onclick="startGame()">🚂 Start Journey</button>
 <p class="note">Original browser implementation based on the supplied gameplay rules. Artwork and interface are newly created.</p>
-<div class="version">Version 34</div>
+<div class="version">Version 35</div>
 </div></section>
 
 <section id="game" class="screen hidden">
@@ -546,9 +555,9 @@ function renderMap(){
 function renderAll(){
  $("players").innerHTML=players.map((p,i)=>`<div class="playerCard ${i===turn&&!initialSetup?"active":""}" style="border-left:8px solid ${p.color}"><div class="pname">${p.name}</div><div class="stats"><span>★ ${p.score}</span><span>🚂 ${p.trains}</span><span>🎴 ${p.hand.length}</span></div></div>`).join("");
  if(players[turn])$("turnBanner").textContent=`${players[turn].name}'s turn`;
- $("market").innerHTML=market.map((c,i)=>`<div class="card ${c==="wild"?"wild":""}" onclick="drawFace(${i})"><div class="train" style="background:${TRAINCOL[c]}"></div></div>`).join("");
+ $("market").innerHTML=market.map((c,i)=>`<div class="card ${c==="wild"?"wild":""}" onclick="drawFace(${i})"><div class="train" style="background:${c==="wild"?"var(--loco-rainbow)":TRAINCOL[c]}"></div></div>`).join("");
  let p=players[turn]||players[0]; if(!p)return;
- let counts={};p.hand.forEach(c=>counts[c]=(counts[c]||0)+1);$("hand").innerHTML=Object.entries(counts).map(([c,n])=>`<div class="handCard ${selectedClaimColor===c?"claimColorSelected":""}" onclick="selectClaimColor('${c}')"><b>${n}×</b><div class="swatch" style="background:${TRAINCOL[c]}"></div></div>`).join("");
+ let counts={};p.hand.forEach(c=>counts[c]=(counts[c]||0)+1);$("hand").innerHTML=Object.entries(counts).map(([c,n])=>`<div class="handCard ${c==="wild"?"wildHand":""} ${selectedClaimColor===c?"claimColorSelected":""}" onclick="selectClaimColor('${c}')"><b>${n}×</b><div class="swatch" style="background:${c==="wild"?"var(--loco-rainbow)":TRAINCOL[c]}"></div></div>`).join("");
  $("myTickets").innerHTML=p.tickets.map(t=>`<div class="ticket" style="--ticket-color:${ticketColor(t)}"><span class="value">${t.v}</span></div>`).join("");
  $("sideTickets").innerHTML="";
  let mt=$("mapSavedTickets");
@@ -610,7 +619,7 @@ function highlightDrawnHandColor(c){
    if(sw && sw.getAttribute("style")?.includes(TRAINCOL[c])){el.classList.add("drawHighlight");setTimeout(()=>el.classList.remove("drawHighlight"),700)}
  });
 }
-function drawFace(i){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket")return;let c=market[i];if(drawCount===1&&c==="wild"){toast("A face-up Locomotive cannot be your second draw.");return}turnAction="cards";players[turn].hand.push(c);market.splice(i,1);refillMarket();drawCount++;renderAll();if(window.gameSFX)window.gameSFX.draw();highlightDrawnHandColor(c);if(c==="wild"||drawCount>=2)setTimeout(endTurn,720)}
+function drawFace(i){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket")return;let c=market[i];if(c==null)return;if(drawCount===1&&c==="wild"){toast("A face-up Locomotive cannot be your second draw.");return}turnAction="cards";players[turn].hand.push(c);market[i]=deck.length?deck.pop():null;if(market[i]===null)market.splice(i,1);let wilds=market.filter(x=>x==="wild").length;if(wilds>=3&&deck.length>=5){deck.push(...market);deck=shuffle(deck);market=[];while(market.length<5&&deck.length)market.push(deck.pop())}drawCount++;renderAll();if(window.gameSFX)window.gameSFX.draw();highlightDrawnHandColor(c);if(c==="wild"||drawCount>=2)setTimeout(endTurn,720)}
 function drawBlind(){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket"||!deck.length)return;turnAction="cards";let c=deck.pop();players[turn].hand.push(c);drawCount++;renderAll();highlightDrawnHandColor(c);if(drawCount>=2)setTimeout(endTurn,720)}
 function selectClaimColor(c){
  if(gameFinished||initialSetup||turnAction)return;
