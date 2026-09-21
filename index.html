@@ -393,6 +393,31 @@ linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
 }
 .routeSeg[data-route-color="white"] .routePieceInner{stroke:#ffffff!important;opacity:1!important}
 
+
+/* Version 33 — simple player cards; graphical face-up market only; no draw-to-hand flight. */
+/* Cards in the player's hand stay deliberately simple: pure color + quantity, no train artwork. */
+.handCard .swatch::after{content:none!important;display:none!important}
+.handCard{background:#f6ecd3!important}
+/* Unrevealed deck stays plain and graphic-free. */
+.market .deck{background:repeating-linear-gradient(45deg,#b89b69 0 6px,#e1c995 6px 12px)!important;color:#2d2116!important;font-weight:900!important;letter-spacing:.4px}
+.market .deck::before,.market .deck::after{content:none!important}
+/* Only the five revealed cards in the right panel receive a simple line-art locomotive. */
+.market .card:not(.deck) .train{position:relative!important;overflow:visible!important}
+.market .card:not(.deck) .train::before{
+ content:"";position:absolute;left:17%;right:19%;top:25%;height:38%;
+ border:2px solid rgba(255,255,255,.92);border-radius:2px 5px 2px 2px;
+ box-shadow:0 0 0 1px rgba(0,0,0,.55);
+}
+.market .card:not(.deck) .train::after{
+ content:"○  ○";position:absolute;left:19%;right:18%;bottom:-8px;
+ color:#fff;text-shadow:0 0 1px #000,1px 1px 0 #000;font:bold 11px/1 Arial;
+ letter-spacing:7px;white-space:nowrap;text-align:center;
+}
+/* Briefly identify the color that was just added to the current player's hand. */
+.handCard.drawHighlight{transform:translateY(-4px) scale(1.08)!important;border-color:#fff!important;box-shadow:0 0 0 3px #ffd65a,0 0 18px 7px #ffd65acc!important;z-index:50}
+/* Disable the Version-29 flying-card/reveal animation completely. */
+.drawFlyCard,.drawReveal{display:none!important}
+
 </style></head>
 <body>
 <section id="menu" class="screen menu">
@@ -403,14 +428,14 @@ linear-gradient(120deg,#d7d1bc,#b9b29d);touch-action:none}
 <div id="names"></div>
 <button class="btn primary" onclick="startGame()">🚂 Start Journey</button>
 <p class="note">Original browser implementation based on the supplied gameplay rules. Artwork and interface are newly created.</p>
-<div class="version">Version 32</div>
+<div class="version">Version 33</div>
 </div></section>
 
 <section id="game" class="screen hidden">
 <aside class="sidebar"><div id="players"></div><button id="leftDestBtn" class="btn leftDestBtn" onclick="drawTickets()">🎫 Destination Tickets</button></aside>
 <div id="ticketModal" class="modal ticketModalMap hidden"><div class="modalBox"><div id="ticketChoices" class="ticketChoices"></div><button class="btn primary" onclick="confirmTickets()">Choose</button></div></div>
 <main class="mapWrap"><div id="map"></div><div id="mapSavedTickets" class="mapSavedTickets"></div><div id="turnBanner" class="turnBanner"></div><div id="toast" class="toast hidden"></div></main>
-<aside class="market"><h3>TRAIN CARDS</h3><div id="market"></div><div class="card deck" onclick="drawBlind()">🎴 BLIND DRAW</div><div class="destSide"><h3>DESTINATIONS</h3><div id="sideTickets"></div></div><div class="mapTools"><button class="btn" onclick="showHelp()">?</button><button class="btn" onclick="location.reload()">⌂</button></div></aside>
+<aside class="market"><h3>TRAIN CARDS</h3><div id="market"></div><div class="card deck" onclick="drawBlind()">BLIND DRAW</div><div class="destSide"><h3>DESTINATIONS</h3><div id="sideTickets"></div></div><div class="mapTools"><button class="btn" onclick="showHelp()">?</button><button class="btn" onclick="location.reload()">⌂</button></div></aside>
 <footer class="bottom"><div><b>DESTINATIONS</b><div id="myTickets" class="ticketsMini"></div></div><div><b>YOUR HAND</b><div id="hand" class="hand"></div></div>
 <div class="actions"><button class="btn" onclick="drawTickets()">🎫 Destination Tickets</button><button class="btn" onclick="showHelp()">? Rules</button><button class="btn" onclick="location.reload()">Main Menu</button></div></footer>
 </section>
@@ -567,8 +592,14 @@ function finishGame(){
  $('finalResults').innerHTML=`<h2 style="margin-top:0">Journey Complete</h2><div style="font-size:18px;margin-bottom:8px">🏆 ${winners}</div>${body}<button class="btn primary" style="width:100%;margin-top:12px" onclick="location.reload()">New Game</button>`;
  $('finalModal').classList.remove('hidden');
 }
-function drawFace(i){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket")return;let c=market[i];if(drawCount===1&&c==="wild"){toast("A face-up Locomotive cannot be your second draw.");return}turnAction="cards";players[turn].hand.push(c);market.splice(i,1);refillMarket();drawCount++;renderAll();if(c==="wild"||drawCount>=2)endTurn()}
-function drawBlind(){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket"||!deck.length)return;turnAction="cards";players[turn].hand.push(deck.pop());drawCount++;renderAll();if(drawCount>=2)endTurn()}
+function highlightDrawnHandColor(c){
+ document.querySelectorAll(".handCard").forEach(el=>{
+   const sw=el.querySelector(".swatch");
+   if(sw && sw.getAttribute("style")?.includes(TRAINCOL[c])){el.classList.add("drawHighlight");setTimeout(()=>el.classList.remove("drawHighlight"),700)}
+ });
+}
+function drawFace(i){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket")return;let c=market[i];if(drawCount===1&&c==="wild"){toast("A face-up Locomotive cannot be your second draw.");return}turnAction="cards";players[turn].hand.push(c);market.splice(i,1);refillMarket();drawCount++;renderAll();highlightDrawnHandColor(c);if(c==="wild"||drawCount>=2)setTimeout(endTurn,720)}
+function drawBlind(){if(gameFinished||initialSetup||turnAction==="route"||turnAction==="ticket"||!deck.length)return;turnAction="cards";let c=deck.pop();players[turn].hand.push(c);drawCount++;renderAll();highlightDrawnHandColor(c);if(drawCount>=2)setTimeout(endTurn,720)}
 function selectClaimColor(c){
  if(gameFinished||initialSetup||turnAction)return;
  selectedClaimColor=(selectedClaimColor===c?null:c);
@@ -626,7 +657,7 @@ function showHelp(){$("help").classList.remove("hidden")}
 <script>
 (function(){
  function cleanTopText(){
-   const phrases=['player turn','player\\'s turn','train cards','train card','choose a train card','select a train card'];
+   const phrases=['player turn',"player's turn",'train cards','train card','choose a train card','select a train card'];
    document.querySelectorAll('.topbar,header,.header').forEach(box=>{
      [...box.children].forEach(el=>{
        if(el.classList.contains('version')) return;
@@ -665,6 +696,7 @@ function showHelp(){$("help").classList.remove("hidden")}
    return document.querySelector('.hand')||document.querySelector('.handArea')||document.querySelector('.bottomDock');
  }
  function animateDraw(source,known){
+   return; // Version 33: card-flight animation intentionally disabled.
    const target=handTarget(); if(!source||!target)return;
    const a=source.getBoundingClientRect(), b=target.getBoundingClientRect();
    let info=known||cardColor(source);
